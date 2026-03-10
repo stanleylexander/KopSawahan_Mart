@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+class AuthController extends Controller
+{
+    // REGISTER
+    public function register(Request $request)
+    {
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'phone_number' => $request->phone_number,
+            'date_of_birth' => $request->date_of_birth,
+            'gender' => $request->gender
+
+        ]);
+
+        //TOKEN DIBUAT DI SINI
+        $token = $user->createToken('koperasi_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Register sucessfully',
+            'token' => $token,
+            'user' => $user
+        ]);
+    }
+
+
+    // LOGIN
+    public function login(Request $request)
+    {
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Email atau password salah'
+            ], 401);
+        }
+
+        // TOKEN DIBUAT DI SINI
+        $token = $user->createToken('koperasi_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login sucessfully',
+            'token' => $token,
+            'user' => $user
+        ]);
+    }
+
+
+    // PROFILE
+    public function profile(Request $request)
+    {
+        return response()->json($request->user());
+    }
+
+
+    // LOGOUT
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Logout berhasil'
+        ]);
+    }
+}
