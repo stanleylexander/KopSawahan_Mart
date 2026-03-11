@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Point;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -20,6 +21,11 @@ class AuthController extends Controller
             'date_of_birth' => $request->date_of_birth,
             'gender' => $request->gender
 
+        ]);
+
+        Point::create([
+            'user_id' => $user->id,
+            'point' => 0
         ]);
 
         //TOKEN DIBUAT DI SINI

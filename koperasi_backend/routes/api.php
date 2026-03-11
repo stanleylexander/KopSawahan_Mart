@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PointController;
 use App\Http\Controllers\ProductController;
 
 
@@ -18,3 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 //PRODUCT CONTROLLER
 Route::get('/products', [ProductController::class, 'index']);
+
+
+//POINT CONTROLLER
+Route::get('/points/{userId}', [PointController::class, 'getUserPoint']);

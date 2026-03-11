@@ -49,4 +49,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function points()
+    {
+        return $this->hasOne(Point::class);
+    }
 }
