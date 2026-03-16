@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../config/api.dart';
 import '../class/product.dart';
 import '../class/point.dart';
 import '../services/product_service.dart';
 import '../services/point_service.dart';
+import '../services/cart_service.dart';
 import 'product_detail.dart';
 import 'cart_page.dart';
-import '../config/api.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -302,18 +303,32 @@ class _HomeState extends State<Home> {
                         ),
                       ),
 
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(12),
+                      InkWell(
+                        onTap: () async {
+
+                          await CartService.addToCart(product);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Produk ditambahkan ke keranjang"),
+                            ),
+                          );
+
+                        },
+
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.add_shopping_cart,
+                            size: 16,
+                            color: Colors.red.shade700,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.add_shopping_cart,
-                          size: 16,
-                          color: Colors.red.shade700,
-                        ),
-                      ),
+                      )
 
                     ],
                   ),

@@ -20,6 +20,17 @@ class CartService {
     return decoded.map((e) => Cart.fromJson(e)).toList();
   }
 
+  // SAVE CART
+  static Future<void> saveCart(List<Cart> cart) async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    String encoded =
+        jsonEncode(cart.map((e) => e.toJson()).toList());
+
+    await prefs.setString(cartKey, encoded);
+  }
+
   // ADD TO CART
   static Future<void> addToCart(Product product) async {
 
@@ -47,6 +58,50 @@ class CartService {
         jsonEncode(cart.map((e) => e.toJson()).toList());
 
     await prefs.setString(cartKey, encoded);
+  }
+
+  // INCREASE QTY
+  static Future<void> increaseQuantity(int productId) async {
+
+    List<Cart> cart = await getCart();
+
+    int index = cart.indexWhere((item) => item.id == productId);
+
+    if(index != -1){
+      cart[index].quantity += 1;
+    }
+
+    await saveCart(cart);
+  }
+
+  // DECREASE QTY
+  static Future<void> decreaseQuantity(int productId) async {
+
+    List<Cart> cart = await getCart();
+
+    int index = cart.indexWhere((item) => item.id == productId);
+
+    if(index != -1){
+
+      if(cart[index].quantity > 1){
+        cart[index].quantity -= 1;
+      }else{
+        cart.removeAt(index);
+      }
+
+    }
+
+    await saveCart(cart);
+  }
+
+  // REMOVE ITEM
+  static Future<void> removeItem(int productId) async {
+
+    List<Cart> cart = await getCart();
+
+    cart.removeWhere((item) => item.id == productId);
+
+    await saveCart(cart);
   }
 
   // CLEAR CART

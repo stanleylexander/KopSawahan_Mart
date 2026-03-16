@@ -55,6 +55,7 @@ class _CartPageState extends State<CartPage> {
           : Column(
               children: [
 
+                /// LIST PRODUCT
                 Expanded(
                   child: ListView.builder(
 
@@ -64,29 +65,137 @@ class _CartPageState extends State<CartPage> {
 
                       final item = cartItems[index];
 
-                      return ListTile(
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                            )
+                          ],
+                        ),
 
-                        leading: item.image != null
-                            ? Image.network(
-                                "${Api.storageUrl}${item.image}",
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              )
-                            : const Icon(Icons.image),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
 
-                        title: Text(item.name),
+                            /// IMAGE
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: item.image != null
+                                  ? Image.network(
+                                      "${Api.storageUrl}${item.image}",
+                                      width: 70,
+                                      height: 70,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Container(
+                                      width: 70,
+                                      height: 70,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.image),
+                                    ),
+                            ),
 
-                        subtitle: Text(
-                            "Rp ${item.price.toStringAsFixed(0)}"),
+                            const SizedBox(width: 12),
 
-                        trailing: Text("x${item.quantity}"),
+                            /// INFO PRODUK
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
 
+                                  Text(
+                                    item.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 4),
+
+                                  Text(
+                                    "Rp ${item.price.toStringAsFixed(0)}",
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+
+                                ],
+                              ),
+                            ),
+
+                            /// QUANTITY + DELETE
+                            Column(
+                              children: [
+
+                                Row(
+                                  children: [
+
+                                    /// MINUS
+                                    IconButton(
+                                      icon: const Icon(Icons.remove_circle_outline),
+                                      onPressed: () async {
+
+                                        await CartService.decreaseQuantity(item.id);
+                                        loadCart();
+
+                                      },
+                                    ),
+
+                                    Text(
+                                      item.quantity.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+
+                                    /// PLUS
+                                    IconButton(
+                                      icon: const Icon(Icons.add_circle_outline),
+                                      onPressed: () async {
+
+                                        await CartService.increaseQuantity(item.id);
+                                        loadCart();
+
+                                      },
+                                    ),
+
+                                    /// DELETE
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () async {
+
+                                        await CartService.removeItem(item.id);
+                                        loadCart();
+
+                                      },
+                                    )
+
+                                  ],
+                                ),
+                              ],
+                            )
+
+                          ],
+                        ),
                       );
+
                     },
                   ),
                 ),
 
+                /// TOTAL PRICE + CHECKOUT
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: const BoxDecoration(
