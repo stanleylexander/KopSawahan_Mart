@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api.dart';
 
 class AuthService {
-
-  static const String baseUrl = "http://192.168.1.10:8000/api";
 
   //REGISTER
   static Future<bool> register(
@@ -17,7 +16,7 @@ class AuthService {
   ) async {
 
     final response = await http.post(
-      Uri.parse("$baseUrl/register"),
+      Uri.parse("${Api.baseUrl}/register"),
       headers: {
         "Accept": "application/json"
       },
@@ -49,7 +48,7 @@ class AuthService {
   ) async {
 
     final response = await http.post(
-      Uri.parse("$baseUrl/login"),
+      Uri.parse("${Api.baseUrl}/login"),
       headers: {
         "Accept": "application/json"
       },

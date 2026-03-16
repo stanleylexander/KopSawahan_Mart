@@ -3,6 +3,9 @@ import '../class/product.dart';
 import '../class/point.dart';
 import '../services/product_service.dart';
 import '../services/point_service.dart';
+import 'product_detail.dart';
+import 'cart_page.dart';
+import '../config/api.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -66,6 +69,19 @@ class _HomeState extends State<Home> {
         elevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.shopping_cart),
+            onPressed: (){
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CartPage()
+                )
+              );
+            },
+          )
+        ],
       ),
       body: Column(
         children: [
@@ -193,94 +209,121 @@ class _HomeState extends State<Home> {
   }
 
   Widget productCard(Product product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.shade100, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.shade50,
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // IMAGE
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              child: product.image != null
-                  ? Image.network(
-                      "http://192.168.1.10:8000/storage/${product.image}",
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[100],
-                        child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey[100],
-                      child: Icon(Icons.image, size: 50, color: Colors.grey[400]),
-                    ),
-            ),
-          ),
+    return InkWell(
 
-          // INFO
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Colors.red.shade800,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "Rp ${product.price.toStringAsFixed(0)}",
-                  style: TextStyle(
-                    color: Colors.red.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Stok: ${product.stock}",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.add_shopping_cart,
-                          size: 16, color: Colors.red.shade700),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetail(product: product),
           ),
-        ],
+        );
+      },
+
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red.shade100, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.shade50,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            // IMAGE
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                child: product.image != null
+                    ? Image.network(
+                        "${Api.storageUrl}${product.image}",
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey[100],
+                          child: Icon(Icons.image_not_supported, size: 50),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[100],
+                        child: Icon(Icons.image, size: 50),
+                      ),
+              ),
+            ),
+
+            // INFO
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  Text(
+                    product.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.red.shade800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  SizedBox(height: 4),
+
+                  Text(
+                    "Rp ${product.price.toStringAsFixed(0)}",
+                    style: TextStyle(
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+
+                  SizedBox(height: 4),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+
+                      Text(
+                        "Stok: ${product.stock}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.add_shopping_cart,
+                          size: 16,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+
+                    ],
+                  ),
+
+                ],
+              ),
+            ),
+
+          ],
+        ),
       ),
     );
   }
