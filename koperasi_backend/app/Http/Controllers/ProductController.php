@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -14,6 +15,7 @@ class ProductController extends Controller
         $products = Product::all();
         return response()->json($products);
     }
+    
 
     //DETAIL PRODUK
     public function detail($id)
@@ -29,22 +31,22 @@ class ProductController extends Controller
         return response()->json($product);
     }
 
+
     //TAMBAH PRODUK
     public function store(Request $request)
     {
 
         $request->validate([
             'name' => 'required',
-            'price' => 'required',
-            'stock' => 'required',
+            'price' => 'required|numeric',
+            'stock' => 'required|integer',
             'image' => 'nullable|image|mimes:jpg,jpeg,png'
         ]);
 
         $imagePath = null;
 
         if($request->hasFile('image')){
-            $imagePath = $request->file('image')
-                        ->store('products','public');
+            $imagePath = $request->file('image')->store('products','public');
         }
 
         $product = Product::create([
@@ -61,37 +63,68 @@ class ProductController extends Controller
         ]);
     }
 
-    //UPDATE PRODUK
+
+    // UPDATE PRODUK
     public function update(Request $request, $id)
     {
-
         $product = Product::find($id);
 
-        if(!$product){
+        if (!$product) {
             return response()->json([
                 "message" => "Produk tidak ditemukan"
-            ],404);
+            ], 404);
         }
 
-        $product->update($request->all());
+        $request->validate([
+            'name' => 'sometimes|required',
+            'price' => 'sometimes|required|numeric',
+            'stock' => 'sometimes|required|integer',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png'
+        ]);
+
+        // Handle update image
+        if ($request->hasFile('image')) {
+
+            // hapus gambar lama
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+
+            $imagePath = $request->file('image')
+                ->store('products', 'public');
+
+            $product->image = $imagePath;
+        }
+
+        // Update field lain
+        $product->update([
+            'name' => $request->name ?? $product->name,
+            'price' => $request->price ?? $product->price,
+            'stock' => $request->stock ?? $product->stock,
+            'description' => $request->description ?? $product->description,
+        ]);
 
         return response()->json([
             "message" => "Produk berhasil diupdate",
             "data" => $product
         ]);
-
     }
 
-    //DELETE PRODUK
+
+    // DELETE PRODUK
     public function destroy($id)
     {
-
         $product = Product::find($id);
 
-        if(!$product){
+        if (!$product) {
             return response()->json([
                 "message" => "Produk tidak ditemukan"
-            ],404);
+            ], 404);
+        }
+
+        // hapus gambar
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
         }
 
         $product->delete();
@@ -99,6 +132,5 @@ class ProductController extends Controller
         return response()->json([
             "message" => "Produk berhasil dihapus"
         ]);
-
     }
 }

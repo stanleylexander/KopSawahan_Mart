@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home.dart';
 import 'register.dart';
+import 'home_admin.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -24,10 +25,34 @@ class _LoginState extends State<Login> {
     setState(() => isLoading = false);
 
     if (success) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => Home()),
-      );
+
+      String? role = await AuthService.getRole();
+
+      if (role == 'member') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Home()),
+        );
+      } 
+      else if (role == 'worker') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Home()), 
+        );
+      }
+      else if (role == 'cashier') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Home()),
+        );
+      }
+      else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomeAdmin()),
+        );
+      }
+
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login gagal. Periksa email atau password.")),

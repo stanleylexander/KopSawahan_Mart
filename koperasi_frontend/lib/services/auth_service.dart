@@ -5,7 +5,7 @@ import '../config/api.dart';
 
 class AuthService {
 
-  //REGISTER
+  // REGISTER
   static Future<bool> register(
     String name,
     String email,
@@ -33,42 +33,52 @@ class AuthService {
     print("REGISTER RESPONSE:");
     print(response.body);
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return true;
-    } else {
-      return false;
-    }
+    return response.statusCode == 200 || response.statusCode == 201;
   }
 
 
   // LOGIN
-  static Future<bool> login(
-    String email, 
-    String password
-  ) async {
+  static Future<bool> login(String email, String password) async {
 
-    final response = await http.post(
-      Uri.parse("${Api.baseUrl}/login"),
-      headers: {
-        "Accept": "application/json"
-      },
-      body: {
-        "email": email,
-        "password": password
-      },
-    );
+    try {
 
-    print("Response API:");
-    print(response.body);
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/login"),
+        headers: {
+          "Accept": "application/json"
+        },
+        body: {
+          "email": email,
+          "password": password
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      String token = data['token'];
-      SharedPreferences prefs =
-      await SharedPreferences.getInstance();
-      await prefs.setString("token", token);
-      return true;
-    } else {
+      print("Response API:");
+      print(response.body);
+
+      if (response.statusCode == 200) {
+
+        final data = jsonDecode(response.body);
+
+        String token = data['token'];
+        String role = data['user']['role'];
+        int userId = data['user']['id'];
+
+        SharedPreferences prefs =
+            await SharedPreferences.getInstance();
+
+        await prefs.setString("token", token);
+        await prefs.setString("role", role);
+        await prefs.setInt("userId", userId);
+
+        return true;
+
+      } else {
+        return false;
+      }
+
+    } catch (e) {
+      print("Login error: $e");
       return false;
     }
   }
@@ -76,19 +86,22 @@ class AuthService {
 
   // GET TOKEN
   static Future<String?> getToken() async {
-
     SharedPreferences prefs =
-    await SharedPreferences.getInstance();
+        await SharedPreferences.getInstance();
     return prefs.getString("token");
   }
 
+  // GET ROLE
+  static Future<String?> getRole() async {
+    SharedPreferences prefs =
+        await SharedPreferences.getInstance();
+    return prefs.getString("role");
+  }
 
   // LOGOUT
   static Future<void> logout() async {
-
     SharedPreferences prefs =
-    await SharedPreferences.getInstance();
-    await prefs.remove("token");
+        await SharedPreferences.getInstance();
+    await prefs.clear(); // 🔥 lebih bersih
   }
-
 }

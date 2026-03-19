@@ -13,6 +13,11 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
 
+    const ROLE_MEMBER = 'member';
+    const ROLE_WORKER = 'worker';
+    const ROLE_CASHIER = 'cashier';
+    const ROLE_ADMIN = 'admin';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -25,6 +30,7 @@ class User extends Authenticatable
         'phone_number',
         'date_of_birth',
         'gender',
+        'role',
     ];
 
     /**
@@ -48,6 +54,26 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isAdmin()
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isCashier()
+    {
+        return $this->role === self::ROLE_CASHIER;
+    }
+
+    public function isWorker()
+    {
+        return $this->role === self::ROLE_WORKER;
+    }
+
+    public function isMember()
+    {
+        return $this->role === self::ROLE_MEMBER;
     }
 
     public function points()

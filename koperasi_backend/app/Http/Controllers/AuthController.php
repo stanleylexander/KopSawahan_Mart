@@ -42,21 +42,29 @@ class AuthController extends Controller
     // LOGIN
     public function login(Request $request)
     {
+        $request->validate([
+            'email' => 'required',
+            'password' => 'required'
+        ]);
+
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Email atau password salah'
+                "message" => "Email atau password salah"
             ], 401);
         }
 
-        // TOKEN DIBUAT DI SINI
-        $token = $user->createToken('koperasi_token')->plainTextToken;
+        // Hapus token lama (optional)
+        $user->tokens()->delete();
+
+        // Buat token baru
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login sucessfully',
-            'token' => $token,
-            'user' => $user
+            "message" => "Login berhasil",
+            "token" => $token,
+            "user" => $user
         ]);
     }
 
@@ -71,10 +79,10 @@ class AuthController extends Controller
     // LOGOUT
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->tokens()->delete();
 
         return response()->json([
-            'message' => 'Logout berhasil'
+            "message" => "Logout berhasil"
         ]);
     }
 }
