@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PointController;
 use App\Http\Controllers\ProductController;
 
+use Illuminate\Http\Request;
+
 
 //AUTH CONTROLLER
 Route::post('/register', [AuthController::class, 'register']);
@@ -16,7 +18,7 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class,'detail']);
 
-Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/products', [ProductController::class, 'store']);
     Route::post('/products/{id}', [ProductController::class, 'update']);
@@ -27,3 +29,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
 //POINT CONTROLLER
 Route::get('/points/{userId}', [PointController::class, 'getUserPoint']);
+
+
+Route::post('/debug-auth', function (Request $request) {
+    return response()->json([
+        'header' => $request->header('Authorization'),
+        'token' => $request->bearerToken(),
+        'user' => $request->user()
+    ]);
+})->middleware('auth:sanctum');

@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../class/product.dart';
 import '../config/api.dart';
+import 'auth_service.dart';
 
 class ProductService {
 
@@ -57,4 +59,54 @@ class ProductService {
     
   }
 
+  //UPDATE PRODUK
+  static Future<bool> updateProduct(
+    int id,
+    String name,
+    String price,
+    String stock,
+    String description,
+    File? image,
+  ) async {
+
+    try {
+
+      String? token = await AuthService.getToken();
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse("${Api.baseUrl}/products/$id"),
+      );
+
+      // 🔐 header token
+      request.headers['Authorization'] = "Bearer $token";
+      request.headers['Accept'] = "application/json";
+
+      // 📝 data
+      request.fields['name'] = name;
+      request.fields['price'] = price;
+      request.fields['stock'] = stock;
+      request.fields['description'] = description;
+
+      // 🖼️ image (optional)
+      if (image != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('image', image.path),
+        );
+      }
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Update gagal: ${response.statusCode}");
+        return false;
+      }
+
+    } catch (e) {
+      print("Error updateProduct: $e");
+      return false;
+    }
+  }
 }

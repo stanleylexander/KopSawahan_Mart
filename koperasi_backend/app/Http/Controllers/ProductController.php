@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
 
+use Illuminate\Support\Facades\Auth;
+
 class ProductController extends Controller
 {
 
@@ -67,6 +69,23 @@ class ProductController extends Controller
     // UPDATE PRODUK
     public function update(Request $request, $id)
     {
+
+        try {
+
+            $product = Product::find($id);
+
+            if (!$product) {
+                return response()->json([
+                    "message" => "Produk tidak ditemukan"
+                ], 404);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                "error" => $e->getMessage()
+            ], 500);
+        }
+
         $product = Product::find($id);
 
         if (!$product) {
