@@ -5,6 +5,8 @@ import 'register.dart';
 import 'home_admin.dart';
 
 class Login extends StatefulWidget {
+  const Login({super.key});
+
   @override
   State<Login> createState() => _LoginState();
 }

@@ -160,7 +160,7 @@ class ProductDetail extends StatelessWidget {
                   SizedBox(height: 16),
 
                   // DESCRIPTION CARD
-                  if (product.description != null && product.description!.isNotEmpty)
+                  if (product.description.isNotEmpty)
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 16),
                       padding: EdgeInsets.all(20),
@@ -195,7 +195,7 @@ class ProductDetail extends StatelessWidget {
                           ),
                           SizedBox(height: 12),
                           Text(
-                            product.description!,
+                            product.description,
                             style: TextStyle(
                               fontSize: 15,
                               height: 1.6,

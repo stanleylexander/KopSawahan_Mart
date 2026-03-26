@@ -69,13 +69,6 @@ class AuthController extends Controller
     }
 
 
-    // PROFILE
-    public function profile(Request $request)
-    {
-        return response()->json($request->user());
-    }
-
-
     // LOGOUT
     public function logout(Request $request)
     {

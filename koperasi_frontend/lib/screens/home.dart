@@ -9,6 +9,8 @@ import 'product_detail.dart';
 import 'cart_page.dart';
 
 class Home extends StatefulWidget {
+  const Home({super.key});
+
   @override
   State<Home> createState() => _HomeState();
 }

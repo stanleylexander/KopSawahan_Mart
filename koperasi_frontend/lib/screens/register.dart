@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
 class Register extends StatefulWidget {
+  const Register({super.key});
+
   @override
   State<Register> createState() => _RegisterState();
 }
@@ -233,7 +235,7 @@ class _RegisterState extends State<Register> {
 
                   // Gender Dropdown
                   DropdownButtonFormField<String>(
-                    value: gender,
+                    initialValue: gender,
                     decoration: InputDecoration(
                       labelText: "Gender",
                       prefixIcon: Icon(Icons.wc_outlined, color: Colors.red.shade700),
