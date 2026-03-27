@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
-use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
@@ -37,32 +37,39 @@ class ProductController extends Controller
     //TAMBAH PRODUK
     public function store(Request $request)
     {
+        try {
 
-        $request->validate([
-            'name' => 'required',
-            'price' => 'required|numeric',
-            'stock' => 'required|integer',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png'
-        ]);
+            $request->validate([
+                'name' => 'required',
+                'price' => 'required|numeric',
+                'stock' => 'required|integer',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png'
+            ]);
 
-        $imagePath = null;
+            $imagePath = null;
 
-        if($request->hasFile('image')){
-            $imagePath = $request->file('image')->store('products','public');
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('products', 'public');
+            }
+
+            $product = Product::create([
+                'name' => $request->name,
+                'price' => $request->price,
+                'stock' => $request->stock,
+                'description' => $request->description,
+                'image' => $imagePath
+            ]);
+
+            return response()->json([
+                "message" => "Produk berhasil ditambahkan",
+                "data" => $product
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                "error" => $e->getMessage()
+            ], 500);
         }
-
-        $product = Product::create([
-            'name' => $request->name,
-            'price' => $request->price,
-            'stock' => $request->stock,
-            'description' => $request->description,
-            'image' => $imagePath
-        ]);
-
-        return response()->json([
-            "message" => "Produk berhasil ditambahkan",
-            "data" => $product
-        ]);
     }
 
 

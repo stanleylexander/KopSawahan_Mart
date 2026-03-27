@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import '../config/api.dart';
-import '../class/product.dart';
-import '../class/point.dart';
-import '../services/product_service.dart';
-import '../services/point_service.dart';
-import '../services/cart_service.dart';
+import '../../config/api.dart';
+import '../../class/product.dart';
+import '../../class/point.dart';
+import '../../services/product_service.dart';
+import '../../services/point_service.dart';
+import '../../services/cart_service.dart';
+import '../drawer/drawer_member.dart';
 import 'product_detail.dart';
 import 'cart_page.dart';
 
@@ -60,6 +61,19 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
+      // drawer: MemberDrawer(
+      //   name: userName,
+      //   email: userEmail,
+      //   onTapMenu: (index) {
+      //     setState(() {
+      //       selectedIndex = index;
+      //     });
+      //     Navigator.pop(context); // tutup drawer
+      //   },
+      //   onLogout: confirmLogout,
+      // ),
+
       appBar: AppBar(
         title: Text(
           "KopSawahan Mart",

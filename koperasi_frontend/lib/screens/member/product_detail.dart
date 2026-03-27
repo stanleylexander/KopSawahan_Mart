@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../class/product.dart';
-import '../config/api.dart';
-import '../services/cart_service.dart';
+import '../../class/product.dart';
+import '../../config/api.dart';
+import '../../services/cart_service.dart';
 
 class ProductDetail extends StatelessWidget {
   final Product product;

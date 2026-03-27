@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../class/product.dart';
-import '../class/user.dart';
-import '../services/product_service.dart';
-import '../services/user_service.dart';
+import '../../class/product.dart';
+import '../../class/user.dart';
+import '../../services/product_service.dart';
+import '../../services/user_service.dart';
 import 'product_detail_admin.dart';
+import 'add_product_admin.dart';
 
 class HomeAdmin extends StatefulWidget {
   const HomeAdmin({super.key});
@@ -125,6 +126,17 @@ class _HomeAdminState extends State<HomeAdmin> {
           ),
         ],
       ),
+
+      floatingActionButton: isProductView ? FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddProductPage()),
+          );
+        },
+        backgroundColor: Colors.red.shade700,
+        child: Icon(Icons.add, color: Colors.white),
+      ) : null,
     );
   }
 
