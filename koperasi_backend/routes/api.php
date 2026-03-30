@@ -2,22 +2,36 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\PointController;
+use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 
 use Illuminate\Http\Request;
 
 
-//AUTH CONTROLLER
+// AUTH CONTROLLER
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
 
-//PRODUCT CONTROLLER
+// PRODUCT CONTROLLER
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class,'detail']);
+
+
+// MEMBER 
+Route::middleware('auth:sanctum')->group(function () {
+
+    //PROFILE
+    Route::get('/user', [UserController::class, 'profile']);
+
+    // VOUCHER
+    Route::get('/vouchers', [VoucherController::class, 'index']);
+    Route::post('/vouchers/{id}/redeem', [VoucherController::class, 'redeem']);
+    Route::get('/my-vouchers', [VoucherController::class, 'myVouchers']);
+});
+
 
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
@@ -30,9 +44,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users/{id}/role', [UserController::class, 'updateRole']);
 
-});
 
-Route::middleware('auth:sanctum')->get('/user', [UserController::class, 'profile']);
+    // VOUCHER
+    Route::post('/vouchers', [VoucherController::class, 'store']);
+
+});
 
 
 Route::post('/debug-auth', function (Request $request) {

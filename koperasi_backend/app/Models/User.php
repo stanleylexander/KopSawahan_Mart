@@ -77,8 +77,8 @@ class User extends Authenticatable
         return $this->role === self::ROLE_MEMBER;
     }
 
-    public function points()
+    public function vouchers()
     {
-        return $this->hasOne(Point::class);
+        return $this->hasMany(UserVoucher::class);
     }
 }

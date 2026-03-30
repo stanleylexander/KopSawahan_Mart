@@ -8,6 +8,7 @@ import '../../services/cart_service.dart';
 // import '../drawer/drawer_member.dart';
 import 'product_detail.dart';
 import 'cart_page.dart';
+import 'voucher_page.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -97,6 +98,7 @@ class _HomeState extends State<Home> {
       ),
       body: Column(
         children: [
+
           // SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(16),
@@ -125,52 +127,63 @@ class _HomeState extends State<Home> {
           ),
 
           // POINT CARD
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 16),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red.shade700, Colors.red.shade500],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VoucherPage(),
+                ),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.red.shade700, Colors.red.shade500],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.shade200,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.red.shade200,
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.stars, color: Colors.white, size: 28),
-                    SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Poin Anda",
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                        Text(
-                          userPoints == 0 ? "0" : userPoints.toString(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.stars, color: Colors.white, size: 28),
+                      SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Poin Anda",
+                            style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 20),
-              ],
+                          Text(
+                            userPoints == 0 ? "0" : userPoints.toString(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 20),
+                ],
+              ),
             ),
           ),
           SizedBox(height: 16),
