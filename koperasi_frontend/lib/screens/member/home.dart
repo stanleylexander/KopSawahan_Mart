@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../config/api.dart';
 import '../../class/product.dart';
-import '../../class/point.dart';
 import '../../services/product_service.dart';
-import '../../services/point_service.dart';
+import '../../services/user_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/cart_service.dart';
-import '../drawer/drawer_member.dart';
+// import '../drawer/drawer_member.dart';
 import 'product_detail.dart';
 import 'cart_page.dart';
 
@@ -19,7 +19,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   List<Product> products = [];
   List<Product> filteredProducts = [];
-  Point? userPoint;
+  int userPoints = 0;
   bool isLoading = true;
   TextEditingController searchController = TextEditingController();
 
@@ -40,10 +40,17 @@ class _HomeState extends State<Home> {
   }
 
   void fetchPoint() async {
-    Point? point = await PointService.getUserPoint(1);
-    setState(() {
-      userPoint = point;
-    });
+    String? token = await AuthService.getToken(); 
+
+    if (token == null) return;
+
+    final user = await UserService.getProfile(token);
+
+    if (user != null) {
+      setState(() {
+        userPoints = user.points;
+      });
+    }
   }
 
   void searchProduct(String keyword) {
@@ -61,18 +68,6 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
-      // drawer: MemberDrawer(
-      //   name: userName,
-      //   email: userEmail,
-      //   onTapMenu: (index) {
-      //     setState(() {
-      //       selectedIndex = index;
-      //     });
-      //     Navigator.pop(context); // tutup drawer
-      //   },
-      //   onLogout: confirmLogout,
-      // ),
 
       appBar: AppBar(
         title: Text(
@@ -163,7 +158,7 @@ class _HomeState extends State<Home> {
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                         Text(
-                          userPoint == null ? "0" : userPoint!.point.toString(),
+                          userPoints == 0 ? "0" : userPoints.toString(),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,

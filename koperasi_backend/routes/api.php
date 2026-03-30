@@ -32,9 +32,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
 });
 
-
-//POINT CONTROLLER
-Route::get('/points/{userId}', [PointController::class, 'getUserPoint']);
+Route::middleware('auth:sanctum')->get('/user', [UserController::class, 'profile']);
 
 
 Route::post('/debug-auth', function (Request $request) {

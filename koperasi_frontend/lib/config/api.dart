@@ -1,4 +1,4 @@
 class Api {
-  static const baseUrl = "http://192.168.1.12:8000/api";
-  static const storageUrl = "http://192.168.1.12:8000/storage/";
+  static const baseUrl = "http://192.168.1.8:8000/api";
+  static const storageUrl = "http://192.168.1.8:8000/storage/";
 }

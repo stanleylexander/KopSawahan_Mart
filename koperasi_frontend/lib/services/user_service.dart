@@ -29,6 +29,32 @@ class UserService {
     }
   }
 
+
+  // PROFILE
+  static Future<User?> getProfile(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse("${Api.baseUrl}/user"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return User.fromJson(data);
+      } else {
+        print("ERROR getProfile: ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("Error getProfile: $e");
+      return null;
+    }
+  }
+
+
   // UPDATE ROLE
   static Future<bool> updateUserRole(int userId, String role, String token) async {
     try {
