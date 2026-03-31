@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Voucher;
 use App\Models\UserVoucher;
 
@@ -40,19 +41,34 @@ class VoucherController extends Controller
             ], 400);
         }
 
-        // ✅ kurangi poin
-        $user->points -= $voucher->required_points;
-        $user->save();
+        DB::beginTransaction();
 
-        // ✅ simpan ke user_vouchers
-        UserVoucher::create([
-            'user_id' => $user->id,
-            'voucher_id' => $voucher->id,
-        ]);
+        try {
+            // ✅ kurangi poin
+            $user->points -= $voucher->required_points;
+            $user->save();
 
-        return response()->json([
-            "message" => "Voucher berhasil ditukar"
-        ]);
+            // ✅ simpan ke user_vouchers
+            UserVoucher::create([
+                'user_id' => $user->id,
+                'voucher_id' => $voucher->id,
+                'status' => 'unused'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                "message" => "Voucher berhasil ditukar"
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                "message" => "Terjadi kesalahan",
+                "error" => $e->getMessage()
+            ], 500);
+        }
     }
 
     // GET USER VOUCHERS
