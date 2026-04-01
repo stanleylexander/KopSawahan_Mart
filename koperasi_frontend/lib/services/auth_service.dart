@@ -100,8 +100,22 @@ class AuthService {
 
   // LOGOUT
   static Future<void> logout() async {
-    SharedPreferences prefs =
-        await SharedPreferences.getInstance();
-    await prefs.clear(); // 🔥 lebih bersih
+    final prefs = await SharedPreferences.getInstance();
+    String token = prefs.getString('token') ?? '';
+
+    try {
+      await http.post(
+        Uri.parse("${Api.baseUrl}/logout"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+    } catch (e) {
+      print("Logout error: $e");
+    }
+
+    await prefs.clear(); // tetap clear local
   }
+  
 }

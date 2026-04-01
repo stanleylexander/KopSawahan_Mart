@@ -34,7 +34,7 @@ class UserService {
   static Future<User?> getProfile(String token) async {
     try {
       final response = await http.get(
-        Uri.parse("${Api.baseUrl}/user"),
+        Uri.parse("${Api.baseUrl}/profile"), 
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",

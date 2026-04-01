@@ -32,7 +32,7 @@ class User {
       dateOfBirth: json['date_of_birth'] ?? '',
       gender: json['gender'] ?? '',
       role: json['role'] ?? '',
-      points: json['points'] ?? '0',
+      points: int.tryParse(json['points'].toString()) ?? 0,
     );
   }
 

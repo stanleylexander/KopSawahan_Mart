@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../admin/home_admin.dart';
 import '../admin/user_admin.dart';
 import '../admin/voucher_admin.dart';
-// import '../profile_page.dart';
+import '../profile_page.dart';
 import '../login.dart';
 
 class AdminDrawer extends StatelessWidget {
@@ -58,16 +58,16 @@ class AdminDrawer extends StatelessWidget {
           ),
 
           // 🔥 MENU
-          // buildMenuItem(
-          //   icon: Icons.person,
-          //   title: "Profile",
-          //   onTap: () {
-          //     Navigator.push(
-          //       context,
-          //       MaterialPageRoute(builder: (_) => ProfilePage()),
-          //     );
-          //   },
-          // ),
+          buildMenuItem(
+            icon: Icons.person,
+            title: "Profile",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ProfilePage()),
+              );
+            },
+          ),
 
           buildMenuItem(
             icon: Icons.inventory,

@@ -18,7 +18,16 @@ class UserController extends Controller
     // PROFILE
     public function profile(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+
+        return response()->json([
+            "id" => $user->id,
+            "name" => $user->name,
+            "email" => $user->email,
+            "phone_number" => $user->phone_number,
+            "date_of_birth" => $user->date_of_birth,
+            "gender" => $user->gender,
+        ]);
     }
 
 

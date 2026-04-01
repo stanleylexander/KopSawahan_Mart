@@ -19,17 +19,18 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class,'detail']);
 
+// PROFILE
+Route::middleware('auth:sanctum')->get('/profile', [UserController::class, 'profile']);
+
 
 // MEMBER 
 Route::middleware('auth:sanctum')->group(function () {
-
-    //PROFILE
-    Route::get('/user', [UserController::class, 'profile']);
 
     // VOUCHER
     Route::get('/vouchers', [VoucherController::class, 'index']);
     Route::post('/vouchers/{id}/redeem', [VoucherController::class, 'redeem']);
     Route::get('/my-vouchers', [VoucherController::class, 'myVouchers']);
+
 });
 
 
@@ -41,7 +42,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::post('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
-    //USER
+    // USER
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users/{id}/role', [UserController::class, 'updateRole']);
 
