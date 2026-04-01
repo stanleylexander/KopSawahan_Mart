@@ -3,6 +3,7 @@ import '../../class/voucher.dart';
 import '../../services/voucher_service.dart';
 import 'add_voucher_admin.dart';
 import 'voucher_detail_admin.dart';
+import '../drawer/drawer_admin.dart';
 
 class VoucherAdminPage extends StatefulWidget {
   const VoucherAdminPage({super.key});
@@ -70,6 +71,7 @@ class _VoucherAdminPageState extends State<VoucherAdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: AdminDrawer(),
       appBar: AppBar(
         title: const Text("Admin Voucher"),
       ),
