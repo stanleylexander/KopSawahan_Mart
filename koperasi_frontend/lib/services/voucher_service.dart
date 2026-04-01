@@ -33,6 +33,94 @@ class VoucherService {
     }
   }
 
+  // CREATE 
+  static Future<bool> createVoucher(String name, int requiredPoints) async {
+    try {
+      String? token = await AuthService.getToken();
+
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/vouchers"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "name": name,
+          "required_points": requiredPoints,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return true;
+      } else {
+        print("ERROR createVoucher: ${response.body}");
+        return false;
+      }
+
+    } catch (e) {
+      print("Error createVoucher: $e");
+      return false;
+    }
+  }
+
+  // UPDATE 
+  static Future<bool> updateVoucher(int id, String name, int requiredPoints) async {
+    try {
+      String? token = await AuthService.getToken();
+
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/vouchers/$id"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "name": name,
+          "required_points": requiredPoints,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("ERROR updateVoucher: ${response.body}");
+        return false;
+      }
+
+    } catch (e) {
+      print("Error updateVoucher: $e");
+      return false;
+    }
+  }
+
+  // DELETE
+  static Future<bool> deleteVoucher(int id) async {
+    try {
+      String? token = await AuthService.getToken();
+
+      final response = await http.delete(
+        Uri.parse("${Api.baseUrl}/vouchers/$id"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("ERROR deleteVoucher: ${response.body}");
+        return false;
+      }
+
+    } catch (e) {
+      print("Error deleteVoucher: $e");
+      return false;
+    }
+  }
+
   // REDEEM VOUCHER
   static Future<bool> redeemVoucher(int voucherId) async {
     try {

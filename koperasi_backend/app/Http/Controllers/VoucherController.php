@@ -15,17 +15,56 @@ class VoucherController extends Controller
         return response()->json(Voucher::all());
     }
 
-    // CREATE (ADMIN)
+    // CREATE
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
-            'required_points' => 'required|integer'
+            'name' => 'required|string',
+            'required_points' => 'required|integer|min:0'
         ]);
 
-        $voucher = Voucher::create($request->all());
+        $voucher = Voucher::create([
+            'name' => $request->name,
+            'required_points' => $request->required_points
+        ]);
 
-        return response()->json($voucher);
+        return response()->json([
+            "message" => "Voucher berhasil dibuat",
+            "data" => $voucher
+        ], 201);
+    }
+
+    // UPDATE
+    public function update($id, Request $request)
+    {
+        $voucher = Voucher::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string',
+            'required_points' => 'required|integer|min:0'
+        ]);
+
+        $voucher->update([
+            'name' => $request->name,
+            'required_points' => $request->required_points
+        ]);
+
+        return response()->json([
+            "message" => "Voucher berhasil diupdate",
+            "data" => $voucher
+        ]);
+    }
+
+    // DELETE
+    public function destroy($id)
+    {
+        $voucher = Voucher::findOrFail($id);
+
+        $voucher->delete();
+
+        return response()->json([
+            "message" => "Voucher berhasil dihapus"
+        ]);
     }
 
     // REDEEM

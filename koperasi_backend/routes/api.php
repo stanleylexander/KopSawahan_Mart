@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+// ADMIN
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
     // PRODUCT
@@ -44,9 +45,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users/{id}/role', [UserController::class, 'updateRole']);
 
-
     // VOUCHER
     Route::post('/vouchers', [VoucherController::class, 'store']);
+    Route::post('/vouchers/{id}', [VoucherController::class, 'update']); 
+    Route::delete('/vouchers/{id}', [VoucherController::class, 'destroy']); 
 
 });
 
