@@ -4,6 +4,7 @@ import 'member/home.dart';
 import 'register.dart';
 import 'admin/home_admin.dart';
 import 'cashier/home_cashier.dart';
+import 'drawer/navbar.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -34,7 +35,7 @@ class _LoginState extends State<Login> {
       if (role == 'member') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => Home()),
+          MaterialPageRoute(builder: (_) => const Navbar()), 
         );
       } 
       else if (role == 'worker') {

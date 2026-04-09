@@ -1,25 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../admin/home_admin.dart';
 import '../admin/user_admin.dart';
 import '../admin/voucher_admin.dart';
 import '../profile_page.dart';
-import '../login.dart';
 
 class AdminDrawer extends StatelessWidget {
   const AdminDrawer({super.key});
-
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => Login()),
-      (route) => false,
-    );
-  }
 
   Widget buildMenuItem({
     required IconData icon,
@@ -71,7 +57,7 @@ class AdminDrawer extends StatelessWidget {
 
           buildMenuItem(
             icon: Icons.inventory,
-            title: "Product",
+            title: "Produk",
             onTap: () {
               Navigator.pushReplacement(
                 context,
@@ -100,16 +86,6 @@ class AdminDrawer extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => VoucherAdminPage()),
               );
             },
-          ),
-
-          Spacer(),
-
-          Divider(),
-
-          buildMenuItem(
-            icon: Icons.logout,
-            title: "Logout",
-            onTap: () => logout(context),
           ),
         ],
       ),
