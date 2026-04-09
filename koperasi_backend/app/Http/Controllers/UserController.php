@@ -27,6 +27,7 @@ class UserController extends Controller
             "phone_number" => $user->phone_number,
             "date_of_birth" => $user->date_of_birth,
             "gender" => $user->gender,
+            "points" => $user->points,
         ]);
     }
 
