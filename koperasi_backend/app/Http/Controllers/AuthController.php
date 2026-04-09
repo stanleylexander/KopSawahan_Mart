@@ -19,13 +19,9 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'phone_number' => $request->phone_number,
             'date_of_birth' => $request->date_of_birth,
-            'gender' => $request->gender
+            'gender' => $request->gender,
+            'points' => 0
 
-        ]);
-
-        Point::create([
-            'user_id' => $user->id,
-            'point' => 0
         ]);
 
         //TOKEN DIBUAT DI SINI

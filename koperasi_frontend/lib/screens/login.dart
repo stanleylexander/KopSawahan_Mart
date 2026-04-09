@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'member/home.dart';
 import 'register.dart';
 import 'admin/home_admin.dart';
+import 'cashier/home_cashier.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -45,7 +46,7 @@ class _LoginState extends State<Login> {
       else if (role == 'cashier') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => Home()),
+          MaterialPageRoute(builder: (_) => HomeCashier()),
         );
       }
       else {
