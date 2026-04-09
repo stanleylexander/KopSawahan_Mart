@@ -55,6 +55,48 @@ class UserService {
   }
 
 
+  // UPDATE PROFILE
+  static Future<bool> updateProfile(
+    String token,
+    String name,
+    String email,
+    String phone,
+    String dateOfBirth,
+    String gender,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/profile"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "name": name,
+          "email": email,
+          "phone_number": phone,
+          "date_of_birth": dateOfBirth,
+          "gender": gender,
+        }),
+      );
+
+      print("STATUS updateProfile: ${response.statusCode}");
+      print("BODY updateProfile: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("ERROR updateProfile: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("EXCEPTION updateProfile: $e");
+      return false;
+    }
+  }
+
+
   // UPDATE ROLE
   static Future<bool> updateUserRole(int userId, String role, String token) async {
     try {

@@ -30,6 +30,35 @@ class UserController extends Controller
         ]);
     }
 
+    // UPDATE PROFILE
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        // ✅ VALIDASI
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone_number' => 'nullable|string|max:20',
+            'date_of_birth' => 'nullable|date',
+            'gender' => 'nullable|in:male,female',
+        ]);
+
+        // ✅ UPDATE DATA
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->phone_number = $request->phone_number;
+        $user->date_of_birth = $request->date_of_birth;
+        $user->gender = $request->gender;
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ]);
+    }
+
 
     // UPDATE ROLE
     public function updateRole(Request $request, $id)

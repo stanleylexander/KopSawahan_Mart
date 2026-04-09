@@ -19,8 +19,12 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class,'detail']);
 
+
 // PROFILE
-Route::middleware('auth:sanctum')->get('/profile', [UserController::class, 'profile']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profile', [UserController::class, 'profile']);
+    Route::post('/profile', [UserController::class, 'updateProfile']);
+});
 
 
 // MEMBER 

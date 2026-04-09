@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../class/user.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import 'login.dart';
@@ -14,7 +12,15 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late Future<User?> futureUser;
+
+  late TextEditingController nameController;
+  late TextEditingController emailController;
+  late TextEditingController phoneController;
+
+  bool isLoading = true;
+
+  DateTime? selectedDate;
+  String selectedGender = "male";
 
   @override
   void initState() {
@@ -26,9 +32,43 @@ class _ProfilePageState extends State<ProfilePage> {
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString('token') ?? '';
 
+    final user = await UserService.getProfile(token);
+
+    if (user != null) {
+      nameController = TextEditingController(text: user.name);
+      emailController = TextEditingController(text: user.email);
+      phoneController = TextEditingController(text: user.phoneNumber);
+      if (user.dateOfBirth.isNotEmpty) {
+        selectedDate = DateTime.tryParse(user.dateOfBirth);
+      }
+      selectedGender = user.gender.toLowerCase();
+    }
+
     setState(() {
-      futureUser = UserService.getProfile(token);
+      isLoading = false;
     });
+  }
+
+  Future<void> handleUpdateProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    String token = prefs.getString('token') ?? '';
+
+    bool success = await UserService.updateProfile(
+      token,
+      nameController.text,
+      emailController.text,
+      phoneController.text,
+      selectedDate != null ? "${selectedDate!.toLocal()}".split(' ')[0]: "",
+      selectedGender,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success ? "Profile berhasil diupdate" : "Gagal update profile",
+        ),
+      ),
+    );
   }
 
   Future<void> handleLogout() async {
@@ -54,153 +94,155 @@ class _ProfilePageState extends State<ProfilePage> {
         centerTitle: true,
       ),
 
-      body: FutureBuilder<User?>(
-        future: futureUser,
-        builder: (context, snapshot) {
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
+      body: isLoading
+          ? Center(
               child: CircularProgressIndicator(color: Colors.red),
-            );
-          }
+            )
+          : RefreshIndicator(
+              onRefresh: loadProfile,
+              child: SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
 
-          if (!snapshot.hasData || snapshot.data == null) {
-            return Center(
-              child: Text("Gagal memuat profile"),
-            );
-          }
-
-          final user = snapshot.data!;
-
-          return RefreshIndicator(
-            onRefresh: loadProfile,
-            child: SingleChildScrollView(
-              physics: AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-
-                  // 🔥 HEADER
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 30),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.red.shade700, Colors.red.shade500],
+                    // 🔥 HEADER
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.red.shade700,
+                            Colors.red.shade500
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(30),
+                          bottomRight: Radius.circular(30),
+                        ),
                       ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(30),
-                        bottomRight: Radius.circular(30),
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 45,
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+
+                          Text(
+                            nameController.text,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          SizedBox(height: 4),
+
+                          Text(
+                            emailController.text,
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 45,
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Colors.red.shade700,
+
+                    SizedBox(height: 24),
+
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade200,
+                            blurRadius: 10,
                           ),
-                        ),
-                        SizedBox(height: 12),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildInput("Nama", nameController),
+                          _buildInput("Email", emailController),
+                          _buildInput("No HP", phoneController),
+                          _buildDatePicker(),
+                          _buildGenderRadio(),
+                        ],
+                      ),
+                    ),
 
-                        Text(
-                          user.name ?? "-",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                    SizedBox(height: 20),
+
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: handleUpdateProfile,
+                        icon: Icon(Icons.save),
+                        label: Text("Simpan Perubahan"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        ),
-
-                        SizedBox(height: 4),
-
-                        Text(
-                          user.email ?? "-",
-                          style: TextStyle(
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // 🔥 INFO CARD
-                  Container(
-                    margin: EdgeInsets.symmetric(horizontal: 16),
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade200,
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _buildInfoRow("Nama", user.name),
-                        _buildInfoRow("Email", user.email),
-                        _buildInfoRow("No HP", user.phoneNumber),
-                        _buildInfoRow("Tanggal Lahir", user.dateOfBirth),
-                        _buildInfoRow("Gender", _formatGender(user.gender)),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 30),
-
-                  // 🔥 LOGOUT BUTTON
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton.icon(
-                      onPressed: handleLogout,
-                      icon: Icon(Icons.logout),
-                      label: Text("Logout"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade700,
-                        minimumSize: Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),
-                  ),
 
-                  SizedBox(height: 30),
-                ],
+                    SizedBox(height: 12),
+
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: handleLogout,
+                        icon: Icon(Icons.logout),
+                        label: Text("Logout"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700,
+                          minimumSize: Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 30),
+                  ],
+                ),
               ),
             ),
-          );
-        },
-      ),
     );
   }
 
-  // ================= HELPER =================
-
-  Widget _buildInfoRow(String title, String? value) {
+  Widget _buildInput(String label, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              title,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey[600]),
           ),
-          Expanded(
-            flex: 5,
-            child: Text(
-              value ?? "-",
-              style: TextStyle(fontWeight: FontWeight.bold),
+          SizedBox(height: 6),
+          TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[100],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
         ],
@@ -208,9 +250,95 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  String _formatGender(String? gender) {
-    if (gender == "male") return "Laki-laki";
-    if (gender == "female") return "Perempuan";
-    return "-";
+  Widget _buildDatePicker() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Tanggal Lahir", style: TextStyle(color: Colors.grey[600])),
+          SizedBox(height: 6),
+
+          GestureDetector(
+            onTap: () async {
+              DateTime now = DateTime.now();
+
+              final pickedDate = await showDatePicker(
+                context: context,
+                initialDate: selectedDate ?? DateTime(2000),
+                firstDate: DateTime(1950),
+                lastDate: now,
+              );
+
+              if (pickedDate != null) {
+                setState(() {
+                  selectedDate = pickedDate;
+                });
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                selectedDate != null
+                    ? "${selectedDate!.toLocal()}".split(' ')[0]
+                    : "Pilih tanggal lahir",
+                style: TextStyle(
+                  color: selectedDate != null
+                      ? Colors.black
+                      : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenderRadio() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Gender", style: TextStyle(color: Colors.grey[600])),
+          SizedBox(height: 6),
+
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<String>(
+                  value: "male",
+                  groupValue: selectedGender,
+                  title: Text("Male"),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedGender = value!;
+                    });
+                  },
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<String>(
+                  value: "female",
+                  groupValue: selectedGender,
+                  title: Text("Female"),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedGender = value!;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
