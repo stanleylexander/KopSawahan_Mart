@@ -35,7 +35,6 @@ class UserController extends Controller
     {
         $user = $request->user();
 
-        // ✅ VALIDASI
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
@@ -44,7 +43,6 @@ class UserController extends Controller
             'gender' => 'nullable|in:male,female',
         ]);
 
-        // ✅ UPDATE DATA
         $user->name = $request->name;
         $user->email = $request->email;
         $user->phone_number = $request->phone_number;

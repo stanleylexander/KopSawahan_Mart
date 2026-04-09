@@ -51,10 +51,10 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Hapus token lama (optional)
+        // HAPUS TOKEN LAMA
         $user->tokens()->delete();
 
-        // Buat token baru
+        // BUAT TOKEN BARU
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

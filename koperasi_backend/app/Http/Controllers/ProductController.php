@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 class ProductController extends Controller
 {
 
-    //TAMPILKAN SEMUA PRODUK
+    // TAMPILKAN SEMUA PRODUK
     public function index()
     {
         $products = Product::all();
@@ -19,7 +19,7 @@ class ProductController extends Controller
     }
     
 
-    //DETAIL PRODUK
+    // DETAIL PRODUK
     public function detail($id)
     {
         $product = Product::find($id);
@@ -34,7 +34,7 @@ class ProductController extends Controller
     }
 
 
-    //TAMBAH PRODUK
+    // TAMBAH PRODUK
     public function store(Request $request)
     {
         try {
@@ -108,10 +108,10 @@ class ProductController extends Controller
             'image' => 'nullable|image|mimes:jpg,jpeg,png'
         ]);
 
-        // Handle update image
+        // UPDATE IMAGE
         if ($request->hasFile('image')) {
 
-            // hapus gambar lama
+            // HAPUS GAMBAR LAMA
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
@@ -122,7 +122,6 @@ class ProductController extends Controller
             $product->image = $imagePath;
         }
 
-        // Update field lain
         $product->update([
             'name' => $request->name ?? $product->name,
             'price' => $request->price ?? $product->price,

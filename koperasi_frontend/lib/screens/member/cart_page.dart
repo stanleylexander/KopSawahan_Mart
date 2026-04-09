@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/cart_service.dart';
+import '../../services/order_service.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
 
@@ -13,6 +14,7 @@ class CartPage extends StatefulWidget {
 class _CartPageState extends State<CartPage> {
   List<Cart> cartItems = [];
   bool isLoading = true;
+  String? selectedPaymentMethod;
 
   @override
   void initState() {
@@ -81,6 +83,8 @@ class _CartPageState extends State<CartPage> {
                         },
                       ),
                     ),
+                    // PAYMENT METHOD
+                    _buildPaymentMethod(),
 
                     // TOTAL & CHECKOUT
                     _buildCheckoutSection(),
@@ -268,22 +272,77 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  Widget _buildPaymentMethod() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Metode Pembayaran",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+
+          // CASH
+          RadioListTile<String>(
+            value: "cash",
+            groupValue: selectedPaymentMethod,
+            title: const Text("Bayar di Tempat"),
+            secondary: Icon(Icons.money, color: Colors.green),
+            onChanged: (value) {
+              setState(() {
+                selectedPaymentMethod = value;
+              });
+            },
+          ),
+
+          // QRIS
+          RadioListTile<String>(
+            value: "online",
+            groupValue: selectedPaymentMethod,
+            title: const Text("QRIS"),
+            secondary: Icon(Icons.qr_code, color: Colors.blue),
+            onChanged: (value) {
+              setState(() {
+                selectedPaymentMethod = value;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCheckoutSection() {
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
             blurRadius: 20,
-            offset: Offset(0, -8),
+            offset: const Offset(0, -8),
           ),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // 🔢 TOTAL
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -304,25 +363,67 @@ class _CartPageState extends State<CartPage> {
               ),
             ],
           ),
+
+          // 🛒 BUTTON CHECKOUT
           SizedBox(
             width: 140,
             height: 52,
             child: ElevatedButton(
-              onPressed: () {
-                // TODO: Navigate to checkout
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Fitur checkout akan segera hadir!")),
+              onPressed: () async {
+                // ❌ VALIDASI: metode pembayaran
+                if (selectedPaymentMethod == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Pilih metode pembayaran terlebih dahulu"),
+                    ),
+                  );
+                  return;
+                }
+
+                // 🔄 Convert cart → items API
+                final items = cartItems.map((item) {
+                  return {
+                    "product_id": item.id,
+                    "quantity": item.quantity,
+                  };
+                }).toList();
+
+                // 🔄 CALL API
+                bool success = await OrderService.createOrder(
+                  paymentMethod: selectedPaymentMethod!,
+                  items: items,
                 );
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Checkout berhasil")),
+                  );
+
+                  // 🔄 Refresh cart / kosongkan
+                  loadCart();
+
+                  // 🔙 Kembali
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Checkout gagal")),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 elevation: 4,
               ),
-              child: Text(
+              child: const Text(
                 "Checkout",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),

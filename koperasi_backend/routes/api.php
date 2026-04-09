@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\OrderController;
 
 use Illuminate\Http\Request;
 
@@ -35,6 +36,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vouchers/{id}/redeem', [VoucherController::class, 'redeem']);
     Route::get('/my-vouchers', [VoucherController::class, 'myVouchers']);
 
+    // ORDER
+    Route::post('/orders', [OrderController::class, 'store']);
+
 });
 
 
@@ -58,10 +62,21 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 });
 
 
-Route::post('/debug-auth', function (Request $request) {
-    return response()->json([
-        'header' => $request->header('Authorization'),
-        'token' => $request->bearerToken(),
-        'user' => $request->user()
-    ]);
-})->middleware('auth:sanctum');
+// CASHIER
+Route::middleware(['auth:sanctum', 'role:cashier'])->group(function () {
+
+    // ORDER
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::post('/orders/{id}/complete', [OrderController::class, 'complete']);
+
+});
+
+
+// Route::post('/debug-auth', function (Request $request) {
+//     return response()->json([
+//         'header' => $request->header('Authorization'),
+//         'token' => $request->bearerToken(),
+//         'user' => $request->user()
+//     ]);
+// })->middleware('auth:sanctum');
