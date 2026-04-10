@@ -15,26 +15,37 @@ class AuthService {
     String gender,
   ) async {
 
-    final response = await http.post(
-      Uri.parse("${Api.baseUrl}/register"),
-      headers: {
-        "Accept": "application/json"
-      },
-      body: {
-        "name": name,
-        "email": email,
-        "password": password,
-        "phone_number": phone,
-        "date_of_birth": birthDate,
-        "gender": gender
-      },
-    );
+    try{
 
-    print("REGISTER RESPONSE:");
-    print(response.body);
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/register"),
+        headers: {
+          "Accept": "application/json"
+        },
+        body: {
+          "name": name,
+          "email": email,
+          "password": password,
+          "phone_number": phone,
+          "date_of_birth": birthDate,
+          "gender": gender
+        },
+      );
 
-    return response.statusCode == 200 || response.statusCode == 201;
-  }
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        print("Register gagal: ${response.body}");
+        return false;
+      }
+
+    } catch (e) {
+      print("Error register: $e");
+      return false;
+    }
+  } 
+
+    
 
 
   // LOGIN
@@ -115,7 +126,7 @@ class AuthService {
       print("Logout error: $e");
     }
 
-    await prefs.clear(); // tetap clear local
+    await prefs.clear(); 
   }
   
 }

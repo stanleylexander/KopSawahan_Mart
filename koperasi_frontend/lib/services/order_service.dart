@@ -6,10 +6,8 @@ import '../config/api.dart';
 class OrderService {
 
   // CREATE ORDER 
-  static Future<bool> createOrder({
-    required String paymentMethod,
-    required List<Map<String, dynamic>> items,
-  }) async {
+  static Future<bool> createOrder({required String paymentMethod, required List<Map<String, dynamic>> items,}) async {
+    
     String? token = await AuthService.getToken();
 
     final response = await http.post(

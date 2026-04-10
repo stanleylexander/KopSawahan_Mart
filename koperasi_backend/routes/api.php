@@ -67,7 +67,7 @@ Route::middleware(['auth:sanctum', 'role:cashier'])->group(function () {
 
     // ORDER
     Route::get('/orders', [OrderController::class, 'index']);
-    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    //Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::post('/orders/{id}/complete', [OrderController::class, 'complete']);
 
 });

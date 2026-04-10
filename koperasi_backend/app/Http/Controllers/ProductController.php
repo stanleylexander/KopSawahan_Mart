@@ -147,7 +147,7 @@ class ProductController extends Controller
             ], 404);
         }
 
-        // hapus gambar
+        // HAPUS GAMBAR
         if ($product->image) {
             Storage::disk('public')->delete($product->image);
         }

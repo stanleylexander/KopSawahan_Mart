@@ -16,7 +16,6 @@ class CartService {
     if(data == null) return [];
 
     List decoded = jsonDecode(data);
-
     return decoded.map((e) => Cart.fromJson(e)).toList();
   }
 
@@ -24,10 +23,7 @@ class CartService {
   static Future<void> saveCart(List<Cart> cart) async {
 
     final prefs = await SharedPreferences.getInstance();
-
-    String encoded =
-        jsonEncode(cart.map((e) => e.toJson()).toList());
-
+    String encoded = jsonEncode(cart.map((e) => e.toJson()).toList());
     await prefs.setString(cartKey, encoded);
   }
 
@@ -35,9 +31,7 @@ class CartService {
   static Future<void> addToCart(Product product) async {
 
     final prefs = await SharedPreferences.getInstance();
-
     List<Cart> cart = await getCart();
-
     int index = cart.indexWhere((item) => item.id == product.id);
 
     if(index != -1){
@@ -64,7 +58,6 @@ class CartService {
   static Future<void> increaseQuantity(int productId) async {
 
     List<Cart> cart = await getCart();
-
     int index = cart.indexWhere((item) => item.id == productId);
 
     if(index != -1){
@@ -78,7 +71,6 @@ class CartService {
   static Future<void> decreaseQuantity(int productId) async {
 
     List<Cart> cart = await getCart();
-
     int index = cart.indexWhere((item) => item.id == productId);
 
     if(index != -1){
@@ -98,9 +90,7 @@ class CartService {
   static Future<void> removeItem(int productId) async {
 
     List<Cart> cart = await getCart();
-
     cart.removeWhere((item) => item.id == productId);
-
     await saveCart(cart);
   }
 
@@ -108,7 +98,6 @@ class CartService {
   static Future<void> clearCart() async {
 
     final prefs = await SharedPreferences.getInstance();
-
     await prefs.remove(cartKey);
 
   }

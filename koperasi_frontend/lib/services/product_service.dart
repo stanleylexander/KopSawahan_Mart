@@ -55,14 +55,14 @@ class ProductService {
       }
 
     } catch(e){
-      print("Error getProducts: $e");
+      print("Error getProductDetail: $e");
       return null;
     }
     
   }
 
 
-  // 🔥 TAMBAH PRODUK
+  // TAMBAH PRODUK
   static Future<bool> addProduct(
     String name,
     String price,
@@ -71,28 +71,23 @@ class ProductService {
     File? image,
   ) async {
     try {
-
       String? token = await AuthService.getToken();
 
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse("${Api.baseUrl}/products"),
-      );
+      var request = http.MultipartRequest('POST', Uri.parse("${Api.baseUrl}/products"),);
 
-      // 🔐 HEADER
-      request.headers['Authorization'] = "Bearer $token";
-      request.headers['Accept'] = "application/json";
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      });
 
-      // 📝 DATA
-      request.fields['name'] = name;
-      request.fields['price'] = price;
-      request.fields['stock'] = stock;
-      request.fields['description'] = description;
+      request.fields.addAll({
+        "name": name,
+        "price": price,
+        "stock": stock,
+        "description": description,
+      });
 
-      // 🖼️ IMAGE 
       if (image != null) {
-        print("UPLOAD IMAGE: ${image.path}");
-
         final mimeTypeData = lookupMimeType(image.path)?.split('/');
 
         request.files.add(
@@ -100,8 +95,8 @@ class ProductService {
             'image',
             image.path,
             contentType: MediaType(
-              mimeTypeData![0], 
-              mimeTypeData[1], 
+              mimeTypeData![0],
+              mimeTypeData[1],
             ),
           ),
         );
@@ -109,13 +104,11 @@ class ProductService {
 
       var response = await request.send();
 
-      // 🔥 DEBUG (opsional tapi penting)
-      if (response.statusCode == 201 || response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
-        final respStr = await response.stream.bytesToString();
-        print("Add gagal: ${response.statusCode}");
-        print("Response: $respStr");
+        final responseFinal = await response.stream.bytesToString();
+        print("addProduct failed: $responseFinal");
         return false;
       }
 
@@ -135,9 +128,7 @@ class ProductService {
     String description,
     File? image,
   ) async {
-
     try {
-
       String? token = await AuthService.getToken();
 
       var request = http.MultipartRequest(
@@ -145,17 +136,18 @@ class ProductService {
         Uri.parse("${Api.baseUrl}/products/$id"),
       );
 
-      // 🔐 header token
-      request.headers['Authorization'] = "Bearer $token";
-      request.headers['Accept'] = "application/json";
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      });
 
-      // 📝 data
-      request.fields['name'] = name;
-      request.fields['price'] = price;
-      request.fields['stock'] = stock;
-      request.fields['description'] = description;
+      request.fields.addAll({
+        "name": name,
+        "price": price,
+        "stock": stock,
+        "description": description,
+      });
 
-      // 🖼️ image (optional)
       if (image != null) {
         request.files.add(
           await http.MultipartFile.fromPath('image', image.path),
@@ -164,10 +156,11 @@ class ProductService {
 
       var response = await request.send();
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
-        print("Update gagal: ${response.statusCode}");
+        final respStr = await response.stream.bytesToString();
+        print("Update failed: $respStr");
         return false;
       }
 

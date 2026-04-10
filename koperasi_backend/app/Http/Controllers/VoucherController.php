@@ -73,7 +73,6 @@ class VoucherController extends Controller
         $user = $request->user();
         $voucher = Voucher::findOrFail($id);
 
-        // ❌ poin tidak cukup
         if ($user->points < $voucher->required_points) {
             return response()->json([
                 "message" => "Poin tidak cukup"
@@ -83,11 +82,11 @@ class VoucherController extends Controller
         DB::beginTransaction();
 
         try {
-            // ✅ kurangi poin
+            // KURANGI POINT
             $user->points -= $voucher->required_points;
             $user->save();
 
-            // ✅ simpan ke user_vouchers
+            // SIMPAN KE user_vouchers
             UserVoucher::create([
                 'user_id' => $user->id,
                 'voucher_id' => $voucher->id,

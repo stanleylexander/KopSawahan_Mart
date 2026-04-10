@@ -27,7 +27,6 @@ class OrderController extends Controller
 
         $total = 0;
 
-        // 🔥 Buat order dulu
         $order = Order::create([
             'user_id' => Auth::id(),
             'payment_method' => $request->payment_method,
@@ -51,7 +50,6 @@ class OrderController extends Controller
             ]);
         }
 
-        // ✅ Update total setelah loop
         $order->update([
             'total_price' => $total
         ]);
@@ -63,19 +61,19 @@ class OrderController extends Controller
     }
 
     // DETAIL ORDER
-    public function show($id)
-    {
-        $order = Order::with('items', 'user')->findOrFail($id);
+    // public function show($id)
+    // {
+    //     $order = Order::with('items', 'user')->findOrFail($id);
 
-        return response()->json($order);
-    }
+    //     return response()->json($order);
+    // }
 
     // UPDATE STATUS
     public function complete($id)
     {
         $order = Order::findOrFail($id);
 
-        $order->status = 'completed';
+        $order->status = 'selesai';
         $order->save();
 
         // KURANG NOTIFIKASI
