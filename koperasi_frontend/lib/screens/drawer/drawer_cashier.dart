@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../login.dart';
 import '../cashier/home_cashier.dart';
+import '../cashier/shop_cashier.dart';
 
 class CashierDrawer extends StatelessWidget {
   const CashierDrawer({super.key});
@@ -71,7 +72,7 @@ class CashierDrawer extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const HomeCashier()),
+                MaterialPageRoute(builder: (_) => const ShopCashier()),
               );
             },
           ),
