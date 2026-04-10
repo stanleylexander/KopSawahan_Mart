@@ -76,18 +76,6 @@ class CashierDrawer extends StatelessWidget {
             },
           ),
 
-          // 📦 UPDATE STOK
-          buildMenuItem(
-            icon: Icons.inventory,
-            title: "Update Stok",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const HomeCashier()),
-              );
-            },
-          ),
-
           Spacer(),
 
           Divider(),

@@ -395,14 +395,17 @@ class _CartPageState extends State<CartPage> {
                 );
 
                 if (success) {
+
+                  await CartService.clearCart();
+
+                  setState(() {
+                    cartItems.clear();
+                  });
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Checkout berhasil")),
                   );
 
-                  // 🔄 Refresh cart / kosongkan
-                  loadCart();
-
-                  // 🔙 Kembali
                   Navigator.pop(context);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
