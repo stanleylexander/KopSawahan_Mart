@@ -6,8 +6,13 @@ import '../config/api.dart';
 class OrderService {
 
   // CREATE ORDER 
-  static Future<bool> createOrder({required String paymentMethod, required List<Map<String, dynamic>> items,}) async {
-    
+  static Future<Map<String, dynamic>?> createOrder({
+    required String paymentMethod,
+    required List<Map<String, dynamic>> items,
+    required int totalPrice,
+    required String status,
+  }) async {
+
     String? token = await AuthService.getToken();
 
     final response = await http.post(
@@ -19,10 +24,19 @@ class OrderService {
       body: jsonEncode({
         "payment_method": paymentMethod,
         "items": items,
+        "total_price": totalPrice,
+        "status": status,
       }),
     );
 
-    return response.statusCode == 200;
+    print("STATUS: ${response.statusCode}");
+    print("BODY: ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body); // 🔥 selalu return data
+    } else {
+      return null;
+    }
   }
 
   // GET ORDERS 

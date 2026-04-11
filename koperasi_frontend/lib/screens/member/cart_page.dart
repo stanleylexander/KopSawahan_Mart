@@ -3,6 +3,7 @@ import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
+import 'qris_member.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -71,7 +72,6 @@ class _CartPageState extends State<CartPage> {
               ? _buildEmptyCart()
               : Column(
                   children: [
-                    // LIST PRODUCT
                     Expanded(
                       child: ListView.separated(
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -83,10 +83,7 @@ class _CartPageState extends State<CartPage> {
                         },
                       ),
                     ),
-                    // PAYMENT METHOD
                     _buildPaymentMethod(),
-
-                    // TOTAL & CHECKOUT
                     _buildCheckoutSection(),
                   ],
                 ),
@@ -151,7 +148,6 @@ class _CartPageState extends State<CartPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // IMAGE
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: item.image != null
@@ -175,8 +171,6 @@ class _CartPageState extends State<CartPage> {
                   ),
           ),
           SizedBox(width: 16),
-
-          // INFO & QUANTITY
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,11 +195,8 @@ class _CartPageState extends State<CartPage> {
                   ),
                 ),
                 SizedBox(height: 8),
-
-                // QUANTITY CONTROL
                 Row(
                   children: [
-                    // MINUS
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
@@ -219,8 +210,6 @@ class _CartPageState extends State<CartPage> {
                         },
                       ),
                     ),
-
-                    // QUANTITY
                     Container(
                       width: 48,
                       height: 40,
@@ -238,8 +227,6 @@ class _CartPageState extends State<CartPage> {
                         ),
                       ),
                     ),
-
-                    // PLUS
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
@@ -258,8 +245,6 @@ class _CartPageState extends State<CartPage> {
               ],
             ),
           ),
-
-          // DELETE
           IconButton(
             icon: Icon(Icons.delete_outline, color: Colors.red.shade500, size: 28),
             onPressed: () async {
@@ -295,8 +280,6 @@ class _CartPageState extends State<CartPage> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-
-          // CASH
           RadioListTile<String>(
             value: "cash",
             groupValue: selectedPaymentMethod,
@@ -308,8 +291,6 @@ class _CartPageState extends State<CartPage> {
               });
             },
           ),
-
-          // QRIS
           RadioListTile<String>(
             value: "online",
             groupValue: selectedPaymentMethod,
@@ -342,7 +323,6 @@ class _CartPageState extends State<CartPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 🔢 TOTAL
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -363,14 +343,11 @@ class _CartPageState extends State<CartPage> {
               ),
             ],
           ),
-
-          // 🛒 BUTTON CHECKOUT
           SizedBox(
             width: 140,
             height: 52,
             child: ElevatedButton(
               onPressed: () async {
-                // ❌ VALIDASI: metode pembayaran
                 if (selectedPaymentMethod == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -380,7 +357,15 @@ class _CartPageState extends State<CartPage> {
                   return;
                 }
 
-                // 🔄 Convert cart → items API
+                if (cartItems.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Keranjang kosong"),
+                    ),
+                  );
+                  return;
+                }
+
                 final items = cartItems.map((item) {
                   return {
                     "product_id": item.id,
@@ -388,29 +373,54 @@ class _CartPageState extends State<CartPage> {
                   };
                 }).toList();
 
-                // 🔄 CALL API
-                bool success = await OrderService.createOrder(
-                  paymentMethod: selectedPaymentMethod!,
-                  items: items,
+                final total = getTotalPrice().toInt();
+
+                if (selectedPaymentMethod == "cash") {
+                  final response = await OrderService.createOrder(
+                    paymentMethod: "cash",
+                    items: items,
+                    totalPrice: total,
+                    status: "pending",
+                  );
+
+                  if (response != null) {
+                    await CartService.clearCart();
+
+                    setState(() {
+                      cartItems.clear();
+                      selectedPaymentMethod = null;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Checkout berhasil")),
+                    );
+
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Checkout gagal")),
+                    );
+                  }
+
+                  return;
+                }
+
+                final checkoutSuccess = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => QrisPage(
+                      items: items,
+                      totalPrice: total,
+                    ),
+                  ),
                 );
 
-                if (success) {
-
-                  await CartService.clearCart();
-
+                if (checkoutSuccess == true && mounted) {
                   setState(() {
                     cartItems.clear();
+                    selectedPaymentMethod = null;
                   });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Checkout berhasil")),
-                  );
-
                   Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Checkout gagal")),
-                  );
                 }
               },
               style: ElevatedButton.styleFrom(

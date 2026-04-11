@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
+import '../../services/order_service.dart';
 import '../../class/product.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
+import 'qris_cashier.dart';
 
 class ShopCashier extends StatefulWidget {
   const ShopCashier({super.key});
@@ -19,6 +21,7 @@ class _ShopCashierState extends State<ShopCashier> {
 
   bool isLoading = true;
   TextEditingController searchController = TextEditingController();
+  String? selectedPaymentMethod;
 
   @override
   void initState() {
@@ -38,7 +41,7 @@ class _ShopCashierState extends State<ShopCashier> {
   }
 
   // 🔥 LOAD CART
-  void loadCart() async {
+  Future<void> loadCart() async {
     List<Cart> data = await CartService.getCart();
     setState(() {
       cartItems = data;
@@ -69,13 +72,14 @@ class _ShopCashierState extends State<ShopCashier> {
   Widget buildCartSheet() {
     return StatefulBuilder(
       builder: (context, setModalState) {
+
         double total = 0;
         for (var item in cartItems) {
           total += item.price * item.quantity;
         }
 
         return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
+          height: MediaQuery.of(context).size.height * 0.8,
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
@@ -85,8 +89,9 @@ class _ShopCashierState extends State<ShopCashier> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
+              // 🔥 LIST ITEM
               Expanded(
                 child: cartItems.isEmpty
                     ? const Center(child: Text("Keranjang kosong"))
@@ -96,28 +101,31 @@ class _ShopCashierState extends State<ShopCashier> {
                           final item = cartItems[index];
 
                           return ListTile(
+                            contentPadding: EdgeInsets.zero,
                             title: Text(item.name),
                             subtitle: Text("Rp ${item.price}"),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
 
+                                // ➖
                                 IconButton(
                                   icon: const Icon(Icons.remove),
                                   onPressed: () async {
                                     await CartService.decreaseQuantity(item.id);
-                                    loadCart();
+                                    await loadCart();
                                     setModalState(() {});
                                   },
                                 ),
 
                                 Text("${item.quantity}"),
 
+                                // ➕
                                 IconButton(
                                   icon: const Icon(Icons.add),
                                   onPressed: () async {
                                     await CartService.increaseQuantity(item.id);
-                                    loadCart();
+                                    await loadCart();
                                     setModalState(() {});
                                   },
                                 ),
@@ -130,6 +138,7 @@ class _ShopCashierState extends State<ShopCashier> {
 
               const SizedBox(height: 10),
 
+              // 🔥 TOTAL
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -147,15 +156,129 @@ class _ShopCashierState extends State<ShopCashier> {
 
               const SizedBox(height: 10),
 
+              // 🔥 METODE PEMBAYARAN
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Metode Pembayaran",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  RadioListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Cash"),
+                    value: "cash",
+                    groupValue: selectedPaymentMethod,
+                    onChanged: (value) {
+                      setModalState(() {
+                        selectedPaymentMethod = value.toString();
+                      });
+                    },
+                  ),
+
+                  RadioListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("QRIS"),
+                    value: "online",
+                    groupValue: selectedPaymentMethod,
+                    onChanged: (value) {
+                      setModalState(() {
+                        selectedPaymentMethod = value.toString();
+                      });
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // 🔥 BUTTON CHECKOUT
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    // TODO: checkout API
+
+                    if (cartItems.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Keranjang kosong")),
+                      );
+                      return;
+                    }
+
+                    if (selectedPaymentMethod == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Pilih metode pembayaran terlebih dahulu"),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final items = cartItems.map((item) {
+                      return {
+                        "product_id": item.id,
+                        "quantity": item.quantity,
+                      };
+                    }).toList();
+
+                    double total = 0;
+                    for (var item in cartItems) {
+                      total += item.price * item.quantity;
+                    }
+
+                    print("SELECTED PAYMENT: $selectedPaymentMethod");
+
+                    // CASH
+                    if (selectedPaymentMethod == "cash") {
+
+                      final response = await OrderService.createOrder(
+                        paymentMethod: "cash",
+                        items: items,
+                        totalPrice: total.toInt(),
+                        status: "diambil",
+                      );
+
+                      if (response != null) {
+                        await CartService.clearCart();
+
+                        setState(() {
+                          cartItems.clear();
+                          selectedPaymentMethod = null;
+                        });
+
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Checkout berhasil (Cash)")),
+                        );
+                      }
+
+                    }
+
+                    // QRIS
+                    else if (selectedPaymentMethod == "online") {
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => QrisCashier(
+                            items: items,
+                            totalPrice: total.toInt(),
+                          ),
+                        ),
+                      );
+                    }
+
                   },
+
+                  // 🔥 STYLE HARUS DI SINI
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
+
+                  // 🔥 CHILD HANYA SEKALI
                   child: const Text("Checkout"),
                 ),
               ),
