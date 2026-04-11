@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -22,37 +24,50 @@ class OrderController extends Controller
     {
         $request->validate([
             'payment_method' => 'required|in:cash,online',
-            'items' => 'required|array'
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        $total = 0;
+        $order = DB::transaction(function () use ($request) {
+            $total = 0;
 
-        $order = Order::create([
-            'user_id' => Auth::id(),
-            'payment_method' => $request->payment_method,
-            'status' => $request->status ?? 'pending',
-            'total_price' => 0
-        ]);
-
-        foreach ($request->items as $item) {
-
-            $product = Product::findOrFail($item['product_id']);
-
-            $subtotal = $product->price * $item['quantity'];
-            $total += $subtotal;
-
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'quantity' => $item['quantity'],
-                'price' => $product->price,
+            $order = Order::create([
+                'user_id' => Auth::id(),
+                'payment_method' => $request->payment_method,
+                'status' => $request->status ?? 'pending',
+                'total_price' => 0
             ]);
-        }
 
-        $order->update([
-            'total_price' => $total
-        ]);
+            foreach ($request->items as $item) {
+                $product = Product::lockForUpdate()->findOrFail($item['product_id']);
+                $quantity = (int) $item['quantity'];
+
+                if ($product->stock < $quantity) {
+                    throw new HttpResponseException(response()->json([
+                        'message' => "Stok produk {$product->name} tidak mencukupi"
+                    ], 422));
+                }
+
+                $subtotal = $product->price * $quantity;
+                $total += $subtotal;
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'price' => $product->price,
+                ]);
+
+                $product->decrement('stock', $quantity);
+            }
+
+            $order->update([
+                'total_price' => $total
+            ]);
+
+            return $order->fresh();
+        });
 
         return response()->json([
             'message' => 'Order berhasil dibuat',
