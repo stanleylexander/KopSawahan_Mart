@@ -2,24 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
-    
     public function index()
     {
-        $orders = Order::with(['user', 'items.product'])->where('status', 'pending')->get();
+        $orders = Order::with(['user', 'items.product'])
+            ->where('status', 'pending')
+            ->get();
+
         return response()->json($orders);
     }
 
-    // CREATE ORDER
     public function store(Request $request)
     {
         $request->validate([
@@ -30,13 +31,13 @@ class OrderController extends Controller
         ]);
 
         $order = DB::transaction(function () use ($request) {
-            $total = 0;
+            $totalPrice = 0;
 
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'payment_method' => $request->payment_method,
                 'status' => $request->status ?? 'pending',
-                'total_price' => 0
+                'total_price' => 0,
             ]);
 
             foreach ($request->items as $item) {
@@ -45,12 +46,12 @@ class OrderController extends Controller
 
                 if ($product->stock < $quantity) {
                     throw new HttpResponseException(response()->json([
-                        'message' => "Stok produk {$product->name} tidak mencukupi"
+                        'message' => "Stok produk {$product->name} tidak cukup",
                     ], 422));
                 }
 
                 $subtotal = $product->price * $quantity;
-                $total += $subtotal;
+                $totalPrice += $subtotal;
 
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -63,7 +64,7 @@ class OrderController extends Controller
             }
 
             $order->update([
-                'total_price' => $total
+                'total_price' => $totalPrice,
             ]);
 
             return $order->fresh();
@@ -71,19 +72,10 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => 'Order berhasil dibuat',
-            'order' => $order
+            'order' => $order,
         ]);
     }
 
-    // DETAIL ORDER
-    // public function show($id)
-    // {
-    //     $order = Order::with('items', 'user')->findOrFail($id);
-
-    //     return response()->json($order);
-    // }
-
-    // UPDATE STATUS
     public function complete($id)
     {
         $order = Order::findOrFail($id);
@@ -91,10 +83,8 @@ class OrderController extends Controller
         $order->status = 'selesai';
         $order->save();
 
-        // KURANG NOTIFIKASI
-
         return response()->json([
-            'message' => 'Pesanan selesai'
+            'message' => 'Pesanan selesai',
         ]);
     }
 }

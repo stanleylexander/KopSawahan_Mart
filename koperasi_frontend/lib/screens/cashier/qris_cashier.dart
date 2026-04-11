@@ -1,48 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../services/order_service.dart';
 import '../../services/cart_service.dart';
+import '../../services/order_service.dart';
 
 class QrisCashier extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final int totalPrice;
 
   const QrisCashier({
-    Key? key,
+    super.key,
     required this.items,
     required this.totalPrice,
-  }) : super(key: key);
+  });
 
   @override
   State<QrisCashier> createState() => _QrisCashierState();
 }
 
 class _QrisCashierState extends State<QrisCashier> {
+  bool isLoading = false;
 
-  bool isPaid = false;
-
-  String generateQRData() {
-    // 🔥 Dummy QRIS format
-    return "QRIS|TOTAL:${widget.totalPrice}";
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
-  Future<void> simulatePayment() async {
-    // ⏳ Simulasi delay bayar
-    await Future.delayed(const Duration(seconds: 2));
-
+  Future<void> payNow() async {
     setState(() {
-      isPaid = true;
+      isLoading = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pembayaran berhasil")),
-    );
-
-    Navigator.pop(context);
-  }
-
-  //PAYMENT
-  Future<void> onPaymentSuccess(BuildContext context) async {
+    await Future.delayed(const Duration(seconds: 2));
 
     final response = await OrderService.createOrder(
       paymentMethod: "online",
@@ -51,16 +40,27 @@ class _QrisCashierState extends State<QrisCashier> {
       status: "diambil",
     );
 
-    if (response != null) {
-
-      await CartService.clearCart();
-
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pembayaran berhasil")),
-      );
+    if (response == null) {
+      setState(() {
+        isLoading = false;
+      });
+      showMessage("Checkout gagal");
+      return;
     }
+
+    await CartService.clearCart();
+
+    // Cek dulu, jangan lanjut kalau halaman ini sudah ditutup.
+    if (!mounted) {
+      return;
+    }
+
+    showMessage("Pembayaran berhasil");
+    Navigator.pop(context, true);
+  }
+
+  String getQrData() {
+    return "QRIS|TOTAL:${widget.totalPrice}";
   }
 
   @override
@@ -74,9 +74,7 @@ class _QrisCashierState extends State<QrisCashier> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-
             const SizedBox(height: 20),
-
             Text(
               "Scan QR untuk bayar",
               style: TextStyle(
@@ -85,17 +83,12 @@ class _QrisCashierState extends State<QrisCashier> {
                 color: Colors.red.shade800,
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // 🔥 QR CODE
             QrImageView(
-              data: generateQRData(),
+              data: getQrData(),
               size: 220,
             ),
-
             const SizedBox(height: 20),
-
             Text(
               "Total: Rp ${widget.totalPrice}",
               style: const TextStyle(
@@ -103,26 +96,26 @@ class _QrisCashierState extends State<QrisCashier> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const Spacer(),
-
-            // 🔥 BUTTON BAYAR
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: isPaid ? null : () async {
-                  await simulatePayment();
-                  await onPaymentSuccess(context);
-                },
+                onPressed: isLoading ? null : payNow,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.shade700,
                 ),
-                child: Text(
-                  isPaid ? "Sudah Dibayar" : "Saya sudah bayar",
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text("Saya sudah bayar"),
               ),
             ),
-
           ],
         ),
       ),

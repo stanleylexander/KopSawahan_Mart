@@ -3,26 +3,50 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
 
-class QrisPage extends StatefulWidget {
+class QrisMember extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final int totalPrice;
 
-  const QrisPage({
+  const QrisMember({
     super.key,
     required this.items,
     required this.totalPrice,
   });
 
   @override
-  State<QrisPage> createState() => _QrisPageState();
+  State<QrisMember> createState() => _QrisMemberState();
 }
 
-class _QrisPageState extends State<QrisPage> {
-  bool isPaid = false;
-  bool isProcessingPayment = false;
-  int? orderId;
+class _QrisMemberState extends State<QrisMember> {
+  bool isLoading = false;
 
-  Future<void> _createOrder() async {
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  int? getOrderId(Map<String, dynamic>? response) {
+    if (response == null) return null;
+
+    final order = response["order"];
+    if (order is Map<String, dynamic>) {
+      final id = order["id"];
+
+      if (id is int) return id;
+      if (id is String) return int.tryParse(id);
+    }
+
+    return null;
+  }
+
+  Future<void> payNow() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    await Future.delayed(const Duration(seconds: 2));
+
     final response = await OrderService.createOrder(
       paymentMethod: "online",
       items: widget.items,
@@ -30,79 +54,29 @@ class _QrisPageState extends State<QrisPage> {
       status: "pending",
     );
 
-    if (!mounted) return;
-
-    final createdOrderId = _extractOrderId(response);
-
-    if (createdOrderId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal membuat order QRIS")),
-      );
-      Navigator.pop(context, false);
-      return;
-    }
-
-    setState(() {
-      orderId = createdOrderId;
-    });
-  }
-
-  int? _extractOrderId(Map<String, dynamic>? response) {
-    if (response == null) return null;
-
-    final order = response["order"];
-    if (order is Map<String, dynamic>) {
-      final id = order["id"];
-      if (id is int) return id;
-      if (id is String) return int.tryParse(id);
-    }
-
-    final id = response["id"] ?? response["order_id"];
-    if (id is int) return id;
-    if (id is String) return int.tryParse(id);
-
-    return null;
-  }
-
-  String generateQRData() {
-    return "QRIS|TOTAL:${widget.totalPrice}";
-  }
-
-  Future<void> simulatePayment() async {
-    setState(() {
-      isProcessingPayment = true;
-    });
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    await _createOrder();
-
-    if (!mounted) return;
+    final orderId = getOrderId(response);
 
     if (orderId == null) {
       setState(() {
-        isProcessingPayment = false;
+        isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal membuat order")),
-      );
+      showMessage("Order gagal dibuat");
       return;
     }
 
     await CartService.clearCart();
 
-    if (!mounted) return;
+    // Cek dulu, jangan lanjut kalau halaman ini sudah ditutup.
+    if (!mounted) {
+      return;
+    }
 
-    setState(() {
-      isPaid = true;
-      isProcessingPayment = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pembayaran berhasil")),
-    );
-
+    showMessage("Pembayaran berhasil");
     Navigator.pop(context, true);
+  }
+
+  String getQrData() {
+    return "QRIS|TOTAL:${widget.totalPrice}";
   }
 
   @override
@@ -127,7 +101,7 @@ class _QrisPageState extends State<QrisPage> {
             ),
             const SizedBox(height: 20),
             QrImageView(
-              data: generateQRData(),
+              data: getQrData(),
               size: 220,
             ),
             const SizedBox(height: 20),
@@ -142,22 +116,20 @@ class _QrisPageState extends State<QrisPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: (isPaid || isProcessingPayment) ? null : simulatePayment,
+                onPressed: isLoading ? null : payNow,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.shade700,
                 ),
-                child: isProcessingPayment
+                child: isLoading
                     ? const SizedBox(
-                        height: 20,
                         width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : Text(
-                        isPaid ? "Sudah Dibayar" : "Saya sudah bayar",
-                      ),
+                    : const Text("Saya sudah bayar"),
               ),
             ),
           ],

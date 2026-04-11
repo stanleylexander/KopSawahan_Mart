@@ -227,9 +227,6 @@ class _ShopCashierState extends State<ShopCashier> {
                       total += item.price * item.quantity;
                     }
 
-                    print("SELECTED PAYMENT: $selectedPaymentMethod");
-
-                    // CASH
                     if (selectedPaymentMethod == "cash") {
 
                       final response = await OrderService.createOrder(
@@ -252,14 +249,17 @@ class _ShopCashierState extends State<ShopCashier> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text("Checkout berhasil (Cash)")),
                         );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Checkout gagal")),
+                        );
                       }
 
                     }
 
-                    // QRIS
                     else if (selectedPaymentMethod == "online") {
 
-                      Navigator.push(
+                      final result = await Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
                           builder: (_) => QrisCashier(
@@ -268,6 +268,15 @@ class _ShopCashierState extends State<ShopCashier> {
                           ),
                         ),
                       );
+
+                      if (result == true) {
+                        setState(() {
+                          cartItems.clear();
+                          selectedPaymentMethod = null;
+                        });
+
+                        Navigator.pop(context);
+                      }
                     }
 
                   },
