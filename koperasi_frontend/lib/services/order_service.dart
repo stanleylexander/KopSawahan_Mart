@@ -60,4 +60,13 @@ class OrderService {
 
     return response.statusCode == 200;
   }
+
+  static Future<bool> markOrderAsTaken(int orderId) async {
+    final response = await http.post(
+      Uri.parse("${Api.baseUrl}/orders/$orderId/taken"),
+      headers: await _getHeaders(),
+    );
+
+    return response.statusCode == 200;
+  }
 }

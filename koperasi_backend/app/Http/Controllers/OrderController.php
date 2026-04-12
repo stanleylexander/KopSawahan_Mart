@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\User;
 use App\Models\UserVoucher;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ class OrderController extends Controller
     public function index()
     {
         $orders = Order::with(['user', 'items.product'])
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'selesai'])
+            ->latest()
             ->get();
 
         return response()->json($orders);
@@ -35,9 +37,10 @@ class OrderController extends Controller
 
         $order = DB::transaction(function () use ($request) {
             $totalPrice = 0;
+            $user = User::lockForUpdate()->findOrFail(Auth::id());
 
             $order = Order::create([
-                'user_id' => Auth::id(),
+                'user_id' => $user->id,
                 'user_voucher_id' => null,
                 'payment_method' => $request->payment_method,
                 'status' => $request->status ?? 'pending',
@@ -134,6 +137,35 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => 'Pesanan selesai',
+        ]);
+    }
+
+    public function markAsTaken($id)
+    {
+        DB::transaction(function () use ($id) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+            $user = User::lockForUpdate()->findOrFail($order->user_id);
+
+            $order->status = 'diambil';
+            $order->save();
+
+            $earnedPoints = intdiv($order->total_price, 100);
+
+            if ($earnedPoints > 0) {
+                $user->increment('points', $earnedPoints);
+
+                Notification::create([
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                    'title' => 'Poin bertambah',
+                    'message' => "Kamu mendapat {$earnedPoints} poin dari pesanan yang sudah diambil.",
+                    'type' => 'point',
+                ]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Pesanan sudah diambil',
         ]);
     }
 }
