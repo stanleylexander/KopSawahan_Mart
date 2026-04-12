@@ -4,7 +4,12 @@ import '../member/notification_page.dart';
 import '../profile_page.dart';
 
 class Navbar extends StatefulWidget {
-  const Navbar({super.key});
+  final bool isWorkerAccount;
+
+  const Navbar({
+    super.key,
+    this.isWorkerAccount = false,
+  });
 
   @override
   State<Navbar> createState() => _NavbarState();
@@ -12,12 +17,17 @@ class Navbar extends StatefulWidget {
 
 class _NavbarState extends State<Navbar> {
   int _selectedIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    Home(),
-    NotificationPage(),
-    ProfilePage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      Home(isWorkerAccount: widget.isWorkerAccount),
+      const NotificationPage(),
+      const ProfilePage(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -28,14 +38,25 @@ class _NavbarState extends State<Navbar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_selectedIndex],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.red.shade700,
+        unselectedItemColor: Colors.grey.shade500,
         type: BottomNavigationBarType.fixed,
+        elevation: 12,
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+        ),
 
         items: const [
           BottomNavigationBarItem(

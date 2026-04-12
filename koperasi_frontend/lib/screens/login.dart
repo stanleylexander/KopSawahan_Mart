@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'member/home.dart';
 import 'register.dart';
 import 'admin/home_admin.dart';
 import 'cashier/home_cashier.dart';
@@ -42,7 +41,7 @@ class _LoginState extends State<Login> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => const Home(isWorkerAccount: true),
+            builder: (_) => const Navbar(isWorkerAccount: true),
           ), 
         );
       }

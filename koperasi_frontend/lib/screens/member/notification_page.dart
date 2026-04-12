@@ -9,6 +9,7 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
+  final Color primaryRed = const Color(0xFFB71C1C);
   List notifications = [];
   bool isLoading = true;
 
@@ -57,6 +58,10 @@ class _NotificationPageState extends State<NotificationPage> {
       return Colors.green;
     }
 
+    if (type == 'point') {
+      return Colors.orange;
+    }
+
     return Colors.grey;
   }
 
@@ -67,6 +72,10 @@ class _NotificationPageState extends State<NotificationPage> {
 
     if (type == 'pickup') {
       return Icons.inventory_2;
+    }
+
+    if (type == 'point') {
+      return Icons.stars_rounded;
     }
 
     return Icons.notifications;
@@ -91,8 +100,8 @@ class _NotificationPageState extends State<NotificationPage> {
           boxShadow: const [
             BoxShadow(
               color: Colors.black12,
-              blurRadius: 4,
-              offset: Offset(0, 2),
+              blurRadius: 8,
+              offset: Offset(0, 4),
             ),
           ],
         ),
@@ -189,9 +198,21 @@ class _NotificationPageState extends State<NotificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F6),
       appBar: AppBar(
         title: const Text("Notifikasi"),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: primaryRed,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryRed, Colors.red.shade500],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: buildBody(),
     );

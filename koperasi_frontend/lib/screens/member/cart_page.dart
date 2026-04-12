@@ -20,6 +20,8 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
+  final Color primaryRed = const Color(0xFFB71C1C);
+  final Color creamBackground = const Color(0xFFFFF8F6);
   List<Cart> cartItems = [];
   List<dynamic> myVouchers = [];
   bool isLoading = true;
@@ -148,6 +150,18 @@ class _CartPageState extends State<CartPage> {
     return getSubtotalPrice() - getDiscountAmount();
   }
 
+  String getSelectedPaymentLabel() {
+    if (selectedPaymentMethod == "cash") {
+      return "Bayar di tempat";
+    }
+
+    if (selectedPaymentMethod == "online") {
+      return "QRIS";
+    }
+
+    return "Belum dipilih";
+  }
+
   Future<void> openMyVouchersPage() async {
     final selectedId = await Navigator.push<int?>(
       context,
@@ -161,6 +175,77 @@ class _CartPageState extends State<CartPage> {
     setState(() {
       selectedUserVoucherId = selectedId;
     });
+  }
+
+  Future<void> openCheckoutSettingSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        "Atur Checkout",
+                        style: TextStyle(
+                          color: primaryRed,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      buildVoucherSummary(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await openMyVouchersPage();
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      buildPaymentMethod(
+                        onChanged: (value) {
+                          setState(() {
+                            selectedPaymentMethod = value;
+                          });
+                          setSheetState(() {
+                            selectedPaymentMethod = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      buildCheckoutBreakdown(),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> clearCartAfterCheckout() async {
@@ -431,27 +516,20 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget buildVoucherSummary() {
+  Widget buildVoucherSummary({VoidCallback? onPressed}) {
     final selectedVoucher = getSelectedVoucher();
     final availableVoucherCount = getAvailableVouchers().length;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFFBFA),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: Colors.red.shade100),
       ),
       child: Row(
         children: [
-          Icon(Icons.local_offer, color: Colors.red.shade700),
+          Icon(Icons.local_offer, color: primaryRed),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -474,7 +552,7 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
           TextButton(
-            onPressed: availableVoucherCount == 0 ? null : openMyVouchersPage,
+            onPressed: availableVoucherCount == 0 ? null : (onPressed ?? openMyVouchersPage),
             child: Text(selectedVoucher == null ? "Pilih" : "Ganti"),
           ),
         ],
@@ -482,20 +560,13 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget buildPaymentMethod() {
+  Widget buildPaymentMethod({ValueChanged<String?>? onChanged}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFFBFA),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: Colors.red.shade100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,110 +581,85 @@ class _CartPageState extends State<CartPage> {
             groupValue: selectedPaymentMethod,
             title: const Text("Bayar di Tempat"),
             secondary: const Icon(Icons.money, color: Colors.green),
-            onChanged: (value) {
-              setState(() {
-                selectedPaymentMethod = value;
-              });
-            },
+            onChanged: onChanged ??
+                (value) {
+                  setState(() {
+                    selectedPaymentMethod = value;
+                  });
+                },
           ),
           RadioListTile<String>(
             value: "online",
             groupValue: selectedPaymentMethod,
             title: const Text("QRIS"),
             secondary: const Icon(Icons.qr_code, color: Colors.blue),
-            onChanged: (value) {
-              setState(() {
-                selectedPaymentMethod = value;
-              });
-            },
+            onChanged: onChanged ??
+                (value) {
+                  setState(() {
+                    selectedPaymentMethod = value;
+                  });
+                },
           ),
         ],
       ),
     );
   }
 
-  Widget buildCheckoutSection() {
+  Widget buildCheckoutBreakdown() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -8),
+        color: const Color(0xFFFFFBFA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Ringkasan Belanja",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: primaryRed,
+            ),
+          ),
+          const SizedBox(height: 12),
+          buildSummaryRow("Subtotal", "Rp ${getOriginalSubtotalPrice()}"),
+          if (widget.isWorker)
+            buildSummaryRow("Diskon worker", "-Rp ${getWorkerDiscountAmount()}"),
+          buildSummaryRow("Diskon voucher", "-Rp ${getDiscountAmount()}"),
+          const SizedBox(height: 6),
+          buildSummaryRow(
+            "Total bayar",
+            "Rp ${getFinalTotalPrice()}",
+            isTotal: true,
           ),
         ],
       ),
+    );
+  }
+
+  Widget buildSummaryRow(String label, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Subtotal",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              Text(
-                "Rp ${getOriginalSubtotalPrice()}",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red.shade800,
-                ),
-              ),
-              if (widget.isWorker)
-                Text(
-                  "Diskon worker: -Rp ${getWorkerDiscountAmount()}",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              const SizedBox(height: 4),
-              Text(
-                "Diskon voucher: -Rp ${getDiscountAmount()}",
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                "Total: Rp ${getFinalTotalPrice()}",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red.shade800,
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isTotal ? 15 : 14,
+              color: isTotal ? primaryRed : Colors.grey[700],
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+            ),
           ),
-          SizedBox(
-            width: 140,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: onCheckoutPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-              ),
-              child: const Text(
-                "Checkout",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isTotal ? 20 : 14,
+              color: isTotal ? primaryRed : Colors.green.shade700,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -624,7 +670,7 @@ class _CartPageState extends State<CartPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: creamBackground,
       appBar: AppBar(
         title: const Text(
           "Keranjang Belanja",
@@ -653,24 +699,127 @@ class _CartPageState extends State<CartPage> {
             )
           : cartItems.isEmpty
               ? buildEmptyCart()
-              : Column(
+              : Stack(
                   children: [
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                    ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 170),
+                      itemCount: cartItems.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        return buildCartItem(cartItems[index]);
+                      },
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 18,
+                              offset: const Offset(0, -6),
+                            ),
+                          ],
                         ),
-                        itemCount: cartItems.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          return buildCartItem(cartItems[index]);
-                        },
+                        child: SafeArea(
+                          top: false,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF5F2),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Total bayar",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "Rp ${getFinalTotalPrice()}",
+                                            style: TextStyle(
+                                              color: primaryRed,
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "Metode: ${getSelectedPaymentLabel()}",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  SizedBox(
+                                    width: 128,
+                                    height: 54,
+                                    child: ElevatedButton(
+                                      onPressed: onCheckoutPressed,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: primaryRed,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Checkout",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: openCheckoutSettingSheet,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: primaryRed,
+                                        side: BorderSide(color: Colors.red.shade200),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
+                                      icon: const Icon(Icons.tune),
+                                      label: const Text("Atur checkout"),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    buildVoucherSummary(),
-                    buildPaymentMethod(),
-                    buildCheckoutSection(),
                   ],
                 ),
     );

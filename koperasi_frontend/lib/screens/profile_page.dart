@@ -12,6 +12,8 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final Color primaryRed = const Color(0xFFB71C1C);
+  final Color creamBackground = const Color(0xFFFFF8F6);
 
   late TextEditingController nameController;
   late TextEditingController emailController;
@@ -86,12 +88,23 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: creamBackground,
 
       appBar: AppBar(
         title: const Text("Profile"),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: primaryRed,
+        foregroundColor: Colors.white,
         centerTitle: true,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryRed, Colors.red.shade500],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
 
       body: isLoading
@@ -112,7 +125,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.red.shade700,
+                            primaryRed,
                             Colors.red.shade500
                           ],
                         ),
@@ -129,7 +142,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: Icon(
                               Icons.person,
                               size: 50,
-                              color: Colors.red.shade700,
+                              color: primaryRed,
                             ),
                           ),
                           SizedBox(height: 12),
@@ -163,8 +176,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.shade200,
-                            blurRadius: 10,
+                            color: Colors.red.shade50,
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
@@ -189,6 +203,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: Text("Simpan Perubahan"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
                           minimumSize: Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -206,7 +221,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         icon: Icon(Icons.logout),
                         label: Text("Logout"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
+                          backgroundColor: primaryRed,
+                          foregroundColor: Colors.white,
                           minimumSize: Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
