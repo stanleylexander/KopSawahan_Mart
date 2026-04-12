@@ -18,6 +18,7 @@ class OrderService {
     required List<Map<String, dynamic>> items,
     required int totalPrice,
     required String status,
+    int? userVoucherId,
   }) async {
     final response = await http.post(
       Uri.parse("${Api.baseUrl}/orders"),
@@ -27,6 +28,7 @@ class OrderService {
         "items": items,
         "total_price": totalPrice,
         "status": status,
+        if (userVoucherId != null) "user_voucher_id": userVoucherId,
       }),
     );
 

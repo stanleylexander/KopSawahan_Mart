@@ -29,14 +29,14 @@ class _VoucherPageState extends State<VoucherPage> {
   }
 
   Future<void> redeem(int id) async {
-    bool success = await VoucherService.redeemVoucher(id);
+    final success = await VoucherService.redeemVoucher(id);
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Voucher berhasil ditukar")),
       );
 
-      fetchVouchers(); // refresh (optional)
+      fetchVouchers();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gagal menukar voucher")),
@@ -44,25 +44,60 @@ class _VoucherPageState extends State<VoucherPage> {
     }
   }
 
-  Future<void> confirmRedeem(int id) async {
+  Future<void> showVoucherDetail(Voucher voucher) async {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Konfirmasi"),
-        content: const Text("Tukar voucher ini?"),
+        title: Text(voucher.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Diskon: ${voucher.discountPercent}%"),
+            const SizedBox(height: 8),
+            Text("Maksimal diskon: Rp ${voucher.maxDiscountAmount}"),
+            const SizedBox(height: 8),
+            Text("Poin dibutuhkan: ${voucher.requiredPoints}"),
+            const SizedBox(height: 12),
+            Text(
+              voucher.description.isEmpty
+                  ? "Belum ada deskripsi"
+                  : voucher.description,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
+            child: const Text("Tutup"),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              redeem(id);
+              redeem(voucher.id);
             },
-            child: const Text("Ya"),
+            child: const Text("Tukar"),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget buildVoucherCard(Voucher voucher) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: ListTile(
+        title: Text(voucher.name),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Diskon: ${voucher.discountPercent}%"),
+            Text("Maksimal: Rp ${voucher.maxDiscountAmount}"),
+            Text("Poin: ${voucher.requiredPoints}"),
+          ],
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () => showVoucherDetail(voucher),
       ),
     );
   }
@@ -77,25 +112,14 @@ class _VoucherPageState extends State<VoucherPage> {
           ? const Center(child: CircularProgressIndicator())
           : vouchers.isEmpty
               ? const Center(child: Text("Tidak ada voucher"))
-              : ListView.builder(
-                  itemCount: vouchers.length,
-                  itemBuilder: (context, index) {
-                    final voucher = vouchers[index];
-
-                    return Card(
-                      margin: const EdgeInsets.all(10),
-                      child: ListTile(
-                        title: Text(voucher.name),
-                        subtitle: Text(
-                          "${voucher.requiredPoints} poin",
-                        ),
-                        trailing: ElevatedButton(
-                          onPressed: () => confirmRedeem(voucher.id),
-                          child: const Text("Tukar"),
-                        ),
-                      ),
-                    );
-                  },
+              : RefreshIndicator(
+                  onRefresh: fetchVouchers,
+                  child: ListView.builder(
+                    itemCount: vouchers.length,
+                    itemBuilder: (context, index) {
+                      return buildVoucherCard(vouchers[index]);
+                    },
+                  ),
                 ),
     );
   }

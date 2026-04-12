@@ -8,7 +8,10 @@ class Voucher extends Model
 {
     protected $fillable = [
         'name',
-        'required_points'
+        'description',
+        'required_points',
+        'discount_amount',
+        'max_discount_amount',
     ];
 
     public function users()

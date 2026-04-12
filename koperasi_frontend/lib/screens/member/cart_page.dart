@@ -3,6 +3,8 @@ import '../../class/cart.dart';
 import '../../config/api.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
+import '../../services/voucher_service.dart';
+import 'my_vouchers_page.dart';
 import 'qris_member.dart';
 
 class CartPage extends StatefulWidget {
@@ -14,13 +16,15 @@ class CartPage extends StatefulWidget {
 
 class _CartPageState extends State<CartPage> {
   List<Cart> cartItems = [];
+  List<dynamic> myVouchers = [];
   bool isLoading = true;
   String? selectedPaymentMethod;
+  int? selectedUserVoucherId;
 
   @override
   void initState() {
     super.initState();
-    loadCart();
+    loadPageData();
   }
 
   void showMessage(String message) {
@@ -29,17 +33,41 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Future<void> loadCart() async {
+  Future<void> loadPageData() async {
     setState(() {
       isLoading = true;
     });
 
+    final cartData = await CartService.getCart();
+    final voucherData = await VoucherService.getMyVouchers();
+
+    setState(() {
+      cartItems = cartData;
+      myVouchers = voucherData;
+      isLoading = false;
+    });
+  }
+
+  Future<void> loadCart() async {
     final data = await CartService.getCart();
 
     setState(() {
       cartItems = data;
-      isLoading = false;
     });
+  }
+
+  List<dynamic> getAvailableVouchers() {
+    return myVouchers.where((item) => item['status'] == 'unused').toList();
+  }
+
+  dynamic getSelectedVoucher() {
+    for (final item in getAvailableVouchers()) {
+      if (item['id'] == selectedUserVoucherId) {
+        return item;
+      }
+    }
+
+    return null;
   }
 
   List<Map<String, dynamic>> getOrderItems() {
@@ -51,14 +79,57 @@ class _CartPageState extends State<CartPage> {
     }).toList();
   }
 
-  double getTotalPrice() {
-    double total = 0;
+  int getSubtotalPrice() {
+    int total = 0;
 
     for (final item in cartItems) {
-      total += item.price * item.quantity;
+      total += (item.price * item.quantity).toInt();
     }
 
     return total;
+  }
+
+  int getDiscountAmount() {
+    final selectedVoucher = getSelectedVoucher();
+
+    if (selectedVoucher == null) {
+      return 0;
+    }
+
+    final voucher = selectedVoucher['voucher'];
+    final discountPercent = voucher['discount_amount'] ?? 0;
+    final maxDiscountAmount = voucher['max_discount_amount'] ?? 0;
+
+    int discount = (getSubtotalPrice() * discountPercent / 100).floor();
+
+    if (maxDiscountAmount > 0) {
+      discount = discount > maxDiscountAmount ? maxDiscountAmount : discount;
+    }
+
+    if (discount > getSubtotalPrice()) {
+      return getSubtotalPrice();
+    }
+
+    return discount;
+  }
+
+  int getFinalTotalPrice() {
+    return getSubtotalPrice() - getDiscountAmount();
+  }
+
+  Future<void> openMyVouchersPage() async {
+    final selectedId = await Navigator.push<int?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyVouchersPage(
+          selectedUserVoucherId: selectedUserVoucherId,
+        ),
+      ),
+    );
+
+    setState(() {
+      selectedUserVoucherId = selectedId;
+    });
   }
 
   Future<void> clearCartAfterCheckout() async {
@@ -67,6 +138,7 @@ class _CartPageState extends State<CartPage> {
     setState(() {
       cartItems.clear();
       selectedPaymentMethod = null;
+      selectedUserVoucherId = null;
     });
   }
 
@@ -74,8 +146,9 @@ class _CartPageState extends State<CartPage> {
     final response = await OrderService.createOrder(
       paymentMethod: "cash",
       items: getOrderItems(),
-      totalPrice: getTotalPrice().toInt(),
+      totalPrice: getFinalTotalPrice(),
       status: "pending",
+      userVoucherId: selectedUserVoucherId,
     );
 
     if (response == null) {
@@ -94,7 +167,9 @@ class _CartPageState extends State<CartPage> {
       MaterialPageRoute(
         builder: (_) => QrisMember(
           items: getOrderItems(),
-          totalPrice: getTotalPrice().toInt(),
+          totalPrice: getSubtotalPrice(),
+          discountAmount: getDiscountAmount(),
+          userVoucherId: selectedUserVoucherId,
         ),
       ),
     );
@@ -103,6 +178,7 @@ class _CartPageState extends State<CartPage> {
       setState(() {
         cartItems.clear();
         selectedPaymentMethod = null;
+        selectedUserVoucherId = null;
       });
 
       Navigator.pop(context);
@@ -305,9 +381,60 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  Widget buildVoucherSummary() {
+    final selectedVoucher = getSelectedVoucher();
+    final availableVoucherCount = getAvailableVouchers().length;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.local_offer, color: Colors.red.shade700),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Voucher",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  selectedVoucher == null
+                      ? availableVoucherCount == 0
+                          ? "Belum ada voucher yang bisa dipakai"
+                          : "Belum ada voucher yang dipilih"
+                      : "${selectedVoucher['voucher']['name']} - Diskon ${selectedVoucher['voucher']['discount_amount']}% maks. Rp ${selectedVoucher['voucher']['max_discount_amount']}",
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: availableVoucherCount == 0 ? null : openMyVouchersPage,
+            child: Text(selectedVoucher == null ? "Pilih" : "Ganti"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildPaymentMethod() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -375,14 +502,31 @@ class _CartPageState extends State<CartPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Total Belanja",
+                "Subtotal",
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   color: Colors.grey[600],
                 ),
               ),
               Text(
-                "Rp ${getTotalPrice().toStringAsFixed(0)}",
+                "Rp ${getSubtotalPrice()}",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Diskon: Rp ${getDiscountAmount()}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                "Total: Rp ${getFinalTotalPrice()}",
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -465,6 +609,7 @@ class _CartPageState extends State<CartPage> {
                         },
                       ),
                     ),
+                    buildVoucherSummary(),
                     buildPaymentMethod(),
                     buildCheckoutSection(),
                   ],

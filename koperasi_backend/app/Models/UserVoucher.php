@@ -9,11 +9,21 @@ class UserVoucher extends Model
     protected $fillable = [
         'user_id',
         'voucher_id',
-        'status'
+        'status',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function voucher()
     {
         return $this->belongsTo(Voucher::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

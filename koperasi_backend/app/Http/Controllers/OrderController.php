@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\UserVoucher;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,7 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'user_voucher_id' => 'nullable|integer|exists:user_vouchers,id',
         ]);
 
         $order = DB::transaction(function () use ($request) {
@@ -36,9 +38,11 @@ class OrderController extends Controller
 
             $order = Order::create([
                 'user_id' => Auth::id(),
+                'user_voucher_id' => null,
                 'payment_method' => $request->payment_method,
                 'status' => $request->status ?? 'pending',
                 'total_price' => 0,
+                'discount_amount' => 0,
             ]);
 
             foreach ($request->items as $item) {
@@ -64,8 +68,36 @@ class OrderController extends Controller
                 $product->decrement('stock', $quantity);
             }
 
+            $discountAmount = 0;
+            $userVoucherId = null;
+
+            if ($request->filled('user_voucher_id')) {
+                $userVoucher = UserVoucher::with('voucher')
+                    ->where('id', $request->user_voucher_id)
+                    ->where('user_id', Auth::id())
+                    ->where('status', 'unused')
+                    ->firstOrFail();
+
+                $voucher = $userVoucher->voucher;
+                $discountPercent = $voucher->discount_amount;
+                $discountAmount = (int) floor($totalPrice * $discountPercent / 100);
+
+                if ($voucher->max_discount_amount > 0) {
+                    $discountAmount = min($discountAmount, $voucher->max_discount_amount);
+                }
+
+                $discountAmount = min($discountAmount, $totalPrice);
+                $userVoucherId = $userVoucher->id;
+
+                $userVoucher->update([
+                    'status' => 'used',
+                ]);
+            }
+
             $order->update([
-                'total_price' => $totalPrice,
+                'user_voucher_id' => $userVoucherId,
+                'total_price' => $totalPrice - $discountAmount,
+                'discount_amount' => $discountAmount,
             ]);
 
             Notification::create([

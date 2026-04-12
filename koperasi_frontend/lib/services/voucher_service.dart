@@ -1,174 +1,130 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api.dart';
 import '../class/voucher.dart';
+import '../config/api.dart';
 import 'auth_service.dart';
 
 class VoucherService {
+  static Future<Map<String, String>> _getHeaders({bool withJson = false}) async {
+    final token = await AuthService.getToken();
 
-  // GET ALL VOUCHERS
+    return {
+      "Authorization": "Bearer $token",
+      "Accept": "application/json",
+      if (withJson) "Content-Type": "application/json",
+    };
+  }
+
   static Future<List<Voucher>> getVouchers() async {
     try {
-      String? token = await AuthService.getToken();
-
       final response = await http.get(
         Uri.parse("${Api.baseUrl}/vouchers"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
-        List data = jsonDecode(response.body);
+        final data = jsonDecode(response.body) as List;
         return data.map((e) => Voucher.fromJson(e)).toList();
-      } else {
-        print("ERROR getVouchers: ${response.body}");
-        return [];
       }
 
+      return [];
     } catch (e) {
-      print("Error getVouchers: $e");
       return [];
     }
   }
 
-  // CREATE 
-  static Future<bool> createVoucher(String name, int requiredPoints) async {
+  static Future<bool> createVoucher({
+    required String name,
+    required String description,
+    required int requiredPoints,
+    required int discountPercent,
+    required int maxDiscountAmount,
+  }) async {
     try {
-      String? token = await AuthService.getToken();
-
       final response = await http.post(
         Uri.parse("${Api.baseUrl}/vouchers"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: await _getHeaders(withJson: true),
         body: jsonEncode({
           "name": name,
+          "description": description,
           "required_points": requiredPoints,
+          "discount_amount": discountPercent,
+          "max_discount_amount": maxDiscountAmount,
         }),
       );
 
-      if (response.statusCode == 201) {
-        return true;
-      } else {
-        print("ERROR createVoucher: ${response.body}");
-        return false;
-      }
-
+      return response.statusCode == 201;
     } catch (e) {
-      print("Error createVoucher: $e");
       return false;
     }
   }
 
-  // UPDATE 
-  static Future<bool> updateVoucher(int id, String name, int requiredPoints) async {
+  static Future<bool> updateVoucher({
+    required int id,
+    required String name,
+    required String description,
+    required int requiredPoints,
+    required int discountPercent,
+    required int maxDiscountAmount,
+  }) async {
     try {
-      String? token = await AuthService.getToken();
-
       final response = await http.post(
         Uri.parse("${Api.baseUrl}/vouchers/$id"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: await _getHeaders(withJson: true),
         body: jsonEncode({
           "name": name,
+          "description": description,
           "required_points": requiredPoints,
+          "discount_amount": discountPercent,
+          "max_discount_amount": maxDiscountAmount,
         }),
       );
 
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        print("ERROR updateVoucher: ${response.body}");
-        return false;
-      }
-
+      return response.statusCode == 200;
     } catch (e) {
-      print("Error updateVoucher: $e");
       return false;
     }
   }
 
-  // DELETE
   static Future<bool> deleteVoucher(int id) async {
     try {
-      String? token = await AuthService.getToken();
-
       final response = await http.delete(
         Uri.parse("${Api.baseUrl}/vouchers/$id"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
+        headers: await _getHeaders(),
       );
 
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        print("ERROR deleteVoucher: ${response.body}");
-        return false;
-      }
-
+      return response.statusCode == 200;
     } catch (e) {
-      print("Error deleteVoucher: $e");
       return false;
     }
   }
 
-  // REDEEM VOUCHER
   static Future<bool> redeemVoucher(int voucherId) async {
     try {
-      String? token = await AuthService.getToken();
-
       final response = await http.post(
         Uri.parse("${Api.baseUrl}/vouchers/$voucherId/redeem"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
+        headers: await _getHeaders(),
       );
 
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        print("ERROR redeem: ${response.body}");
-        return false;
-      }
-
+      return response.statusCode == 200;
     } catch (e) {
-      print("Error redeemVoucher: $e");
       return false;
     }
   }
 
-  // GET MY VOUCHERS
   static Future<List<dynamic>> getMyVouchers() async {
     try {
-      String? token = await AuthService.getToken();
-
       final response = await http.get(
         Uri.parse("${Api.baseUrl}/my-vouchers"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
-      } else {
-        print("ERROR myVouchers: ${response.body}");
-        return [];
       }
 
+      return [];
     } catch (e) {
-      print("Error getMyVouchers: $e");
       return [];
     }
   }

@@ -6,11 +6,15 @@ import '../../services/order_service.dart';
 class QrisMember extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final int totalPrice;
+  final int discountAmount;
+  final int? userVoucherId;
 
   const QrisMember({
     super.key,
     required this.items,
     required this.totalPrice,
+    required this.discountAmount,
+    required this.userVoucherId,
   });
 
   @override
@@ -52,6 +56,7 @@ class _QrisMemberState extends State<QrisMember> {
       items: widget.items,
       totalPrice: widget.totalPrice,
       status: "pending",
+      userVoucherId: widget.userVoucherId,
     );
 
     final orderId = getOrderId(response);
@@ -66,7 +71,6 @@ class _QrisMemberState extends State<QrisMember> {
 
     await CartService.clearCart();
 
-    // Cek dulu, jangan lanjut kalau halaman ini sudah ditutup.
     if (!mounted) {
       return;
     }
@@ -76,7 +80,12 @@ class _QrisMemberState extends State<QrisMember> {
   }
 
   String getQrData() {
-    return "QRIS|TOTAL:${widget.totalPrice}";
+    return "QRIS|TOTAL:${getFinalTotal()}";
+  }
+
+  int getFinalTotal() {
+    final total = widget.totalPrice - widget.discountAmount;
+    return total < 0 ? 0 : total;
   }
 
   @override
@@ -106,9 +115,25 @@ class _QrisMemberState extends State<QrisMember> {
             ),
             const SizedBox(height: 20),
             Text(
-              "Total: Rp ${widget.totalPrice}",
+              "Subtotal: Rp ${widget.totalPrice}",
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Diskon Voucher: Rp ${widget.discountAmount}",
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Total: Rp ${getFinalTotal()}",
+              style: const TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),

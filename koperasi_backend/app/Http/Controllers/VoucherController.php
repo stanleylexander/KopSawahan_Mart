@@ -20,12 +20,18 @@ class VoucherController extends Controller
     {
         $request->validate([
             'name' => 'required|string',
-            'required_points' => 'required|integer|min:0'
+            'description' => 'nullable|string',
+            'required_points' => 'required|integer|min:0',
+            'discount_amount' => 'required|integer|min:0|max:100',
+            'max_discount_amount' => 'required|integer|min:0',
         ]);
 
         $voucher = Voucher::create([
             'name' => $request->name,
-            'required_points' => $request->required_points
+            'description' => $request->description,
+            'required_points' => $request->required_points,
+            'discount_amount' => $request->discount_amount,
+            'max_discount_amount' => $request->max_discount_amount,
         ]);
 
         return response()->json([
@@ -41,12 +47,18 @@ class VoucherController extends Controller
 
         $request->validate([
             'name' => 'required|string',
-            'required_points' => 'required|integer|min:0'
+            'description' => 'nullable|string',
+            'required_points' => 'required|integer|min:0',
+            'discount_amount' => 'required|integer|min:0|max:100',
+            'max_discount_amount' => 'required|integer|min:0',
         ]);
 
         $voucher->update([
             'name' => $request->name,
-            'required_points' => $request->required_points
+            'description' => $request->description,
+            'required_points' => $request->required_points,
+            'discount_amount' => $request->discount_amount,
+            'max_discount_amount' => $request->max_discount_amount,
         ]);
 
         return response()->json([
@@ -117,6 +129,7 @@ class VoucherController extends Controller
         return response()->json(
             UserVoucher::with('voucher')
                 ->where('user_id', $user->id)
+                ->latest()
                 ->get()
         );
     }

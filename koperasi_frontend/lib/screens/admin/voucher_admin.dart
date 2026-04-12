@@ -98,7 +98,9 @@ class _VoucherAdminPageState extends State<VoucherAdminPage> {
                   margin: const EdgeInsets.all(10),
                   child: ListTile(
                     title: Text(v.name),
-                    subtitle: Text("Poin: ${v.requiredPoints}"),
+                    subtitle: Text(
+                      "Poin: ${v.requiredPoints} | Diskon: ${v.discountPercent}% maks. Rp ${v.maxDiscountAmount}",
+                    ),
                     onTap: () async {
                       await Navigator.push(
                         context,
