@@ -6,6 +6,7 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\NotificationController;
 
 use Illuminate\Http\Request;
 
@@ -38,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ORDER
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 
 });
 

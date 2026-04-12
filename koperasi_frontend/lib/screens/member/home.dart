@@ -8,6 +8,7 @@ import '../../services/cart_service.dart';
 import 'product_detail.dart';
 import 'cart_page.dart';
 import 'voucher_page.dart';
+import 'notification_page.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -82,6 +83,17 @@ class _HomeState extends State<Home> {
         centerTitle: true,
         iconTheme: IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: (){
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationPage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.shopping_cart),
             onPressed: (){

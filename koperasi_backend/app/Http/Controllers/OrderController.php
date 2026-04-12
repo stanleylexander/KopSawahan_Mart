@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -67,6 +68,14 @@ class OrderController extends Controller
                 'total_price' => $totalPrice,
             ]);
 
+            Notification::create([
+                'user_id' => $order->user_id,
+                'order_id' => $order->id,
+                'title' => 'Checkout berhasil',
+                'message' => 'Pesanan kamu sudah masuk dan sedang diproses.',
+                'type' => 'checkout',
+            ]);
+
             return $order->fresh();
         });
 
@@ -82,6 +91,14 @@ class OrderController extends Controller
 
         $order->status = 'selesai';
         $order->save();
+
+        Notification::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'title' => 'Pesanan siap diambil',
+            'message' => 'Pesanan kamu sudah siap diambil di koperasi.',
+            'type' => 'pickup',
+        ]);
 
         return response()->json([
             'message' => 'Pesanan selesai',
