@@ -11,7 +11,12 @@ import 'product_detail.dart';
 import 'voucher_page.dart';
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  final bool isWorkerAccount;
+
+  const Home({
+    super.key,
+    this.isWorkerAccount = false,
+  });
 
   @override
   State<Home> createState() => _HomeState();
@@ -22,11 +27,13 @@ class _HomeState extends State<Home> {
   List<Product> filteredProducts = [];
   int userPoints = 0;
   bool isLoading = true;
+  bool isWorker = false;
   TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    isWorker = widget.isWorkerAccount;
     loadHomeData();
   }
 
@@ -37,19 +44,41 @@ class _HomeState extends State<Home> {
     applySearch(searchController.text);
   }
 
-  Future<void> fetchPoint() async {
+  int getDisplayPrice(int price) {
+    if (!isWorker) {
+      return price;
+    }
+
+    return (price * 0.9).floor();
+  }
+
+  Future<void> fetchUserData() async {
     final token = await AuthService.getToken();
+    final role = await AuthService.getRole();
+    final currentIsWorker = role == 'worker';
 
     if (token == null) {
-      userPoints = 0;
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        userPoints = 0;
+        isWorker = currentIsWorker || widget.isWorkerAccount;
+      });
       return;
     }
 
     final user = await UserService.getProfile(token);
 
-    if (user != null) {
-      userPoints = user.points;
+    if (!mounted) {
+      return;
     }
+
+    setState(() {
+      userPoints = user?.points ?? 0;
+      isWorker = user?.role == 'worker' || currentIsWorker || widget.isWorkerAccount;
+    });
   }
 
   void applySearch(String keyword) {
@@ -70,7 +99,7 @@ class _HomeState extends State<Home> {
 
     await Future.wait([
       fetchProducts(),
-      fetchPoint(),
+      fetchUserData(),
     ]);
 
     setState(() {
@@ -93,7 +122,7 @@ class _HomeState extends State<Home> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CartPage(),
+        builder: (context) => CartPage(isWorker: isWorker),
       ),
     );
 
@@ -104,7 +133,10 @@ class _HomeState extends State<Home> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductDetail(product: product),
+        builder: (context) => ProductDetail(
+          product: product,
+          isWorker: isWorker,
+        ),
       ),
     );
 
@@ -305,14 +337,32 @@ class _HomeState extends State<Home> {
                     ),
                   ),
                   const SizedBox(height: 4),
+                  if (isWorker)
+                    Text(
+                      "Rp ${product.price.toStringAsFixed(0)}",
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
                   Text(
-                    "Rp ${product.price.toStringAsFixed(0)}",
+                    "Rp ${getDisplayPrice(product.price)}",
                     style: TextStyle(
                       color: Colors.red.shade700,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
+                  if (isWorker)
+                    Text(
+                      "Diskon worker 10%",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -5,15 +5,17 @@ import '../../services/order_service.dart';
 
 class QrisMember extends StatefulWidget {
   final List<Map<String, dynamic>> items;
-  final int totalPrice;
-  final int discountAmount;
+  final int originalSubtotal;
+  final int workerDiscountAmount;
+  final int voucherDiscountAmount;
   final int? userVoucherId;
 
   const QrisMember({
     super.key,
     required this.items,
-    required this.totalPrice,
-    required this.discountAmount,
+    required this.originalSubtotal,
+    required this.workerDiscountAmount,
+    required this.voucherDiscountAmount,
     required this.userVoucherId,
   });
 
@@ -54,7 +56,7 @@ class _QrisMemberState extends State<QrisMember> {
     final response = await OrderService.createOrder(
       paymentMethod: "online",
       items: widget.items,
-      totalPrice: widget.totalPrice,
+      totalPrice: getFinalTotal(),
       status: "pending",
       userVoucherId: widget.userVoucherId,
     );
@@ -83,8 +85,13 @@ class _QrisMemberState extends State<QrisMember> {
     return "QRIS|TOTAL:${getFinalTotal()}";
   }
 
+  int getSubtotalAfterWorkerDiscount() {
+    final total = widget.originalSubtotal - widget.workerDiscountAmount;
+    return total < 0 ? 0 : total;
+  }
+
   int getFinalTotal() {
-    final total = widget.totalPrice - widget.discountAmount;
+    final total = getSubtotalAfterWorkerDiscount() - widget.voucherDiscountAmount;
     return total < 0 ? 0 : total;
   }
 
@@ -115,14 +122,25 @@ class _QrisMemberState extends State<QrisMember> {
             ),
             const SizedBox(height: 20),
             Text(
-              "Subtotal: Rp ${widget.totalPrice}",
+              "Subtotal: Rp ${widget.originalSubtotal}",
               style: const TextStyle(
                 fontSize: 14,
               ),
             ),
+            if (widget.workerDiscountAmount > 0) ...[
+              const SizedBox(height: 6),
+              Text(
+                "Diskon worker: -Rp ${widget.workerDiscountAmount}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
             const SizedBox(height: 6),
             Text(
-              "Diskon Voucher: Rp ${widget.discountAmount}",
+              "Diskon voucher: -Rp ${widget.voucherDiscountAmount}",
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.green,

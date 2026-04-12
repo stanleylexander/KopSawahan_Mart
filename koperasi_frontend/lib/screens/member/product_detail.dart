@@ -5,8 +5,21 @@ import '../../services/cart_service.dart';
 
 class ProductDetail extends StatelessWidget {
   final Product product;
+  final bool isWorker;
 
-  const ProductDetail({super.key, required this.product});
+  const ProductDetail({
+    super.key,
+    required this.product,
+    this.isWorker = false,
+  });
+
+  int getDisplayPrice() {
+    if (!isWorker) {
+      return product.price;
+    }
+
+    return (product.price * 0.9).floor();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,14 +130,36 @@ class ProductDetail extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              "Rp ${product.price.toStringAsFixed(0)}",
-                              style: TextStyle(
-                                fontSize: 24,
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (isWorker)
+                                  Text(
+                                    "Rp ${product.price.toStringAsFixed(0)}",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                  ),
+                                Text(
+                                  "Rp ${getDisplayPrice()}",
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                if (isWorker)
+                                  Text(
+                                    "Diskon worker 10%",
+                                    style: TextStyle(
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                              ],
                             ),
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),

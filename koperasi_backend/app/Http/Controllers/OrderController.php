@@ -71,7 +71,12 @@ class OrderController extends Controller
                 $product->decrement('stock', $quantity);
             }
 
-            $discountAmount = 0;
+            $workerDiscountAmount = $user->isWorker()
+                ? (int) floor($totalPrice * 10 / 100)
+                : 0;
+
+            $priceAfterWorkerDiscount = $totalPrice - $workerDiscountAmount;
+            $voucherDiscountAmount = 0;
             $userVoucherId = null;
 
             if ($request->filled('user_voucher_id')) {
@@ -83,19 +88,21 @@ class OrderController extends Controller
 
                 $voucher = $userVoucher->voucher;
                 $discountPercent = $voucher->discount_amount;
-                $discountAmount = (int) floor($totalPrice * $discountPercent / 100);
+                $voucherDiscountAmount = (int) floor($priceAfterWorkerDiscount * $discountPercent / 100);
 
                 if ($voucher->max_discount_amount > 0) {
-                    $discountAmount = min($discountAmount, $voucher->max_discount_amount);
+                    $voucherDiscountAmount = min($voucherDiscountAmount, $voucher->max_discount_amount);
                 }
 
-                $discountAmount = min($discountAmount, $totalPrice);
+                $voucherDiscountAmount = min($voucherDiscountAmount, $priceAfterWorkerDiscount);
                 $userVoucherId = $userVoucher->id;
 
                 $userVoucher->update([
                     'status' => 'used',
                 ]);
             }
+
+            $discountAmount = $workerDiscountAmount + $voucherDiscountAmount;
 
             $order->update([
                 'user_voucher_id' => $userVoucherId,

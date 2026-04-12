@@ -41,7 +41,9 @@ class _LoginState extends State<Login> {
       else if (role == 'worker') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => Home()), 
+          MaterialPageRoute(
+            builder: (_) => const Home(isWorkerAccount: true),
+          ), 
         );
       }
       else if (role == 'cashier') {

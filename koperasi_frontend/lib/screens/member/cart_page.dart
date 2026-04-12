@@ -8,7 +8,12 @@ import 'my_vouchers_page.dart';
 import 'qris_member.dart';
 
 class CartPage extends StatefulWidget {
-  const CartPage({super.key});
+  final bool isWorker;
+
+  const CartPage({
+    super.key,
+    this.isWorker = false,
+  });
 
   @override
   State<CartPage> createState() => _CartPageState();
@@ -79,7 +84,7 @@ class _CartPageState extends State<CartPage> {
     }).toList();
   }
 
-  int getSubtotalPrice() {
+  int getOriginalSubtotalPrice() {
     int total = 0;
 
     for (final item in cartItems) {
@@ -87,6 +92,32 @@ class _CartPageState extends State<CartPage> {
     }
 
     return total;
+  }
+
+  int getSubtotalPrice() {
+    int total = 0;
+
+    for (final item in cartItems) {
+      total += (getDisplayPrice(item.price) * item.quantity).toInt();
+    }
+
+    return total;
+  }
+
+  int getDisplayPrice(num price) {
+    if (!widget.isWorker) {
+      return price.toInt();
+    }
+
+    return (price * 0.9).floor();
+  }
+
+  int getWorkerDiscountAmount() {
+    if (!widget.isWorker) {
+      return 0;
+    }
+
+    return getOriginalSubtotalPrice() - getSubtotalPrice();
   }
 
   int getDiscountAmount() {
@@ -167,8 +198,9 @@ class _CartPageState extends State<CartPage> {
       MaterialPageRoute(
         builder: (_) => QrisMember(
           items: getOrderItems(),
-          totalPrice: getSubtotalPrice(),
-          discountAmount: getDiscountAmount(),
+          originalSubtotal: getOriginalSubtotalPrice(),
+          workerDiscountAmount: getWorkerDiscountAmount(),
+          voucherDiscountAmount: getDiscountAmount(),
           userVoucherId: selectedUserVoucherId,
         ),
       ),
@@ -310,14 +342,32 @@ class _CartPageState extends State<CartPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                if (widget.isWorker)
+                  Text(
+                    "Rp ${item.price.toStringAsFixed(0)}",
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
                 Text(
-                  "Rp ${item.price.toStringAsFixed(0)}",
+                  "Rp ${getDisplayPrice(item.price)}",
                   style: TextStyle(
                     color: Colors.red.shade700,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
+                if (widget.isWorker)
+                  Text(
+                    "Diskon worker 10%",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -509,16 +559,25 @@ class _CartPageState extends State<CartPage> {
                 ),
               ),
               Text(
-                "Rp ${getSubtotalPrice()}",
+                "Rp ${getOriginalSubtotalPrice()}",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.red.shade800,
                 ),
               ),
+              if (widget.isWorker)
+                Text(
+                  "Diskon worker: -Rp ${getWorkerDiscountAmount()}",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               const SizedBox(height: 4),
               Text(
-                "Diskon: Rp ${getDiscountAmount()}",
+                "Diskon voucher: -Rp ${getDiscountAmount()}",
                 style: const TextStyle(
                   fontSize: 14,
                   color: Colors.green,
