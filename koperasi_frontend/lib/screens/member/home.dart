@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../config/api.dart';
 import '../../class/product.dart';
-import '../../services/product_service.dart';
-import '../../services/user_service.dart';
+import '../../config/api.dart';
 import '../../services/auth_service.dart';
 import '../../services/cart_service.dart';
-import 'product_detail.dart';
+import '../../services/product_service.dart';
+import '../../services/user_service.dart';
 import 'cart_page.dart';
-import 'voucher_page.dart';
 import 'notification_page.dart';
+import 'product_detail.dart';
+import 'voucher_page.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -27,235 +27,231 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    fetchProducts();
-    fetchPoint();
+    loadHomeData();
   }
 
-  void fetchProducts() async {
-    List<Product> data = await ProductService.getProducts();
-    setState(() {
-      products = data;
-      filteredProducts = data;
-      isLoading = false;
-    });
+  Future<void> fetchProducts() async {
+    final data = await ProductService.getProducts();
+
+    products = data;
+    applySearch(searchController.text);
   }
 
-  void fetchPoint() async {
-    String? token = await AuthService.getToken(); 
+  Future<void> fetchPoint() async {
+    final token = await AuthService.getToken();
 
-    if (token == null) return;
+    if (token == null) {
+      userPoints = 0;
+      return;
+    }
 
     final user = await UserService.getProfile(token);
 
     if (user != null) {
-      setState(() {
-        userPoints = user.points;
-      });
+      userPoints = user.points;
     }
   }
 
-  void searchProduct(String keyword) {
-    final results = products.where((product) {
-      final name = product.name.toLowerCase();
-      final search = keyword.toLowerCase();
-      return name.contains(search);
+  void applySearch(String keyword) {
+    if (keyword.isEmpty) {
+      filteredProducts = List<Product>.from(products);
+      return;
+    }
+
+    filteredProducts = products.where((product) {
+      return product.name.toLowerCase().contains(keyword.toLowerCase());
     }).toList();
+  }
+
+  Future<void> loadHomeData() async {
     setState(() {
-      filteredProducts = results;
+      isLoading = true;
+    });
+
+    await Future.wait([
+      fetchProducts(),
+      fetchPoint(),
+    ]);
+
+    setState(() {
+      isLoading = false;
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+  Future<void> openVoucherPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const VoucherPage(),
+      ),
+    );
 
-      appBar: AppBar(
-        title: Text(
-          "KopSawahan Mart",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    await loadHomeData();
+  }
+
+  Future<void> openCartPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CartPage(),
+      ),
+    );
+
+    await loadHomeData();
+  }
+
+  Future<void> openProductDetail(Product product) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetail(product: product),
+      ),
+    );
+
+    await loadHomeData();
+  }
+
+  Future<void> openNotificationPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NotificationPage(),
+      ),
+    );
+  }
+
+  Widget buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        controller: searchController,
+        onChanged: (value) {
+          setState(() {
+            applySearch(value);
+          });
+        },
+        decoration: InputDecoration(
+          hintText: "Cari produk...",
+          prefixIcon: Icon(Icons.search, color: Colors.red.shade700),
+          filled: true,
+          fillColor: Colors.red.shade50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red.shade200),
           ),
         ),
-        backgroundColor: Colors.red.shade700,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: (){
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationPage(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.shopping_cart),
-            onPressed: (){
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CartPage()
-                )
-              );
-            },
-          )
-        ],
       ),
-      body: Column(
-        children: [
+    );
+  }
 
-          // SEARCH BAR
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: searchController,
-              onChanged: searchProduct,
-              decoration: InputDecoration(
-                hintText: "Cari produk...",
-                prefixIcon: Icon(Icons.search, color: Colors.red.shade700),
-                filled: true,
-                fillColor: Colors.red.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.red.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.red.shade700, width: 2),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.red.shade200),
-                ),
-              ),
-            ),
+  Widget buildPointCard() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: openVoucherPage,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.red.shade700, Colors.red.shade500],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-
-          // POINT CARD
-          InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const VoucherPage(),
-                ),
-              );
-            },
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 16),
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.red.shade700, Colors.red.shade500],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.shade200,
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.stars, color: Colors.white, size: 28),
-                      SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Poin Anda",
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                          Text(
-                            userPoints == 0 ? "0" : userPoints.toString(),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 20),
-                ],
-              ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.shade200,
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
-          ),
-          SizedBox(height: 16),
-
-          // LIST PRODUCT
-          Expanded(
-            child: isLoading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.red.shade700,
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Poin Anda",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                  )
-                : filteredProducts.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.search_off, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
-                              "Produk tidak ditemukan",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : GridView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: filteredProducts.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.78,
-                        ),
-                        itemBuilder: (context, index) {
-                          final product = filteredProducts[index];
-                          return productCard(product);
-                        },
+                    Text(
+                      userPoints.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
-          ),
-        ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 20),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget buildProductGrid() {
+    if (isLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: Colors.red.shade700),
+      );
+    }
+
+    if (filteredProducts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.search_off, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              "Produk tidak ditemukan",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: filteredProducts.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.78,
+      ),
+      itemBuilder: (context, index) {
+        return productCard(filteredProducts[index]);
+      },
     );
   }
 
   Widget productCard(Product product) {
     return InkWell(
-
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetail(product: product),
-          ),
-        );
-      },
-
+      onTap: () => openProductDetail(product),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -265,56 +261,50 @@ class _HomeState extends State<Home> {
             BoxShadow(
               color: Colors.red.shade50,
               blurRadius: 8,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // IMAGE
             Expanded(
               child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: product.image != null
                     ? Image.network(
                         "${Api.storageUrl}${product.image}",
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey[100],
-                          child: Icon(Icons.image_not_supported, size: 50),
-                        ),
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[100],
+                            child: const Icon(Icons.image_not_supported, size: 50),
+                          );
+                        },
                       )
                     : Container(
                         color: Colors.grey[100],
-                        child: Icon(Icons.image, size: 50),
+                        child: const Icon(Icons.image, size: 50),
                       ),
               ),
             ),
-
-            // INFO
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Text(
                     product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                       color: Colors.red.shade800,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-
-                  SizedBox(height: 4),
-
+                  const SizedBox(height: 4),
                   Text(
                     "Rp ${product.price.toStringAsFixed(0)}",
                     style: TextStyle(
@@ -323,13 +313,10 @@ class _HomeState extends State<Home> {
                       fontSize: 16,
                     ),
                   ),
-
-                  SizedBox(height: 4),
-
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-
                       Text(
                         "Stok: ${product.stock}",
                         style: TextStyle(
@@ -337,22 +324,22 @@ class _HomeState extends State<Home> {
                           color: Colors.grey[600],
                         ),
                       ),
-
                       InkWell(
                         onTap: () async {
-
                           await CartService.addToCart(product);
+
+                          if (!context.mounted) {
+                            return;
+                          }
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text("Produk ditambahkan ke keranjang"),
                             ),
                           );
-
                         },
-
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.red.shade100,
                             borderRadius: BorderRadius.circular(12),
@@ -364,14 +351,54 @@ class _HomeState extends State<Home> {
                           ),
                         ),
                       )
-
                     ],
                   ),
-
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          "KopSawahan Mart",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.red,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: openNotificationPage,
+          ),
+          IconButton(
+            icon: const Icon(Icons.shopping_cart),
+            onPressed: openCartPage,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: loadHomeData,
+        child: Column(
+          children: [
+            buildSearchBar(),
+            buildPointCard(),
+            const SizedBox(height: 16),
+            Expanded(
+              child: buildProductGrid(),
+            ),
           ],
         ),
       ),
