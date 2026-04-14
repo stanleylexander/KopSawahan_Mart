@@ -19,6 +19,8 @@ class OrderService {
     required int totalPrice,
     required String status,
     int? userVoucherId,
+    String orderSource = "app",
+    String? customerName,
   }) async {
     final response = await http.post(
       Uri.parse("${Api.baseUrl}/orders"),
@@ -28,7 +30,9 @@ class OrderService {
         "items": items,
         "total_price": totalPrice,
         "status": status,
+        "order_source": orderSource,
         if (userVoucherId != null) "user_voucher_id": userVoucherId,
+        if (customerName != null && customerName.isNotEmpty) "customer_name": customerName,
       }),
     );
 
@@ -52,13 +56,17 @@ class OrderService {
     return [];
   }
 
-  static Future<bool> completeOrder(int orderId) async {
+  static Future<Map<String, dynamic>?> completeOrder(int orderId) async {
     final response = await http.post(
       Uri.parse("${Api.baseUrl}/orders/$orderId/complete"),
       headers: await _getHeaders(),
     );
 
-    return response.statusCode == 200;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    return null;
   }
 
   static Future<bool> markOrderAsTaken(int orderId) async {

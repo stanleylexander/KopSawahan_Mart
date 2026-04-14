@@ -171,7 +171,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     final sourceRenderBox = sourceContext.findRenderObject() as RenderBox?;
     final targetRenderBox = _cartButtonKey.currentContext?.findRenderObject() as RenderBox?;
 
-    if (overlay == null || sourceRenderBox == null || targetRenderBox == null) {
+    if (sourceRenderBox == null || targetRenderBox == null) {
       return;
     }
 

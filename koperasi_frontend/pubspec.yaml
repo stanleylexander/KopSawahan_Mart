@@ -38,6 +38,9 @@ dependencies:
   shared_preferences: ^2.2.2
   image_picker: ^1.0.7
   qr_flutter: ^4.1.0
+  print_bluetooth_thermal: ^1.1.9
+  esc_pos_utils_plus: ^2.0.4
+  permission_handler: ^11.0.0
 
 dev_dependencies:
   flutter_test:

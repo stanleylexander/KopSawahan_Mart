@@ -6,18 +6,18 @@ use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Receipt;
 use App\Models\User;
 use App\Models\UserVoucher;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with(['user', 'items.product'])
+        $orders = Order::with(['user', 'items.product', 'receipt'])
             ->whereIn('status', ['pending', 'selesai'])
             ->latest()
             ->get();
@@ -33,15 +33,33 @@ class OrderController extends Controller
             'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'user_voucher_id' => 'nullable|integer|exists:user_vouchers,id',
+            'order_source' => 'nullable|in:app,offline',
+            'customer_name' => 'nullable|string|max:255',
         ]);
 
-        $order = DB::transaction(function () use ($request) {
-            $totalPrice = 0;
-            $user = User::lockForUpdate()->findOrFail(Auth::id());
+        $actor = $request->user();
+        $orderSource = $request->input('order_source', 'app');
+        $isOfflineOrder = $actor->isCashier() && $orderSource === 'offline';
+
+        if ($orderSource === 'offline' && !$actor->isCashier()) {
+            abort(403, 'Hanya kasir yang bisa membuat order offline');
+        }
+
+        $result = DB::transaction(function () use ($request, $actor, $isOfflineOrder, $orderSource) {
+            $subtotalPrice = 0;
+            $customer = $isOfflineOrder
+                ? null
+                : User::lockForUpdate()->findOrFail($actor->id);
+
+            $customerName = $isOfflineOrder
+                ? ($request->customer_name ?: 'Pelanggan Offline')
+                : $customer->name;
 
             $order = Order::create([
-                'user_id' => $user->id,
+                'user_id' => $customer?->id,
                 'user_voucher_id' => null,
+                'order_source' => $orderSource,
+                'customer_name' => $customerName,
                 'payment_method' => $request->payment_method,
                 'status' => $request->status ?? 'pending',
                 'total_price' => 0,
@@ -58,12 +76,13 @@ class OrderController extends Controller
                     ], 422));
                 }
 
-                $subtotal = $product->price * $quantity;
-                $totalPrice += $subtotal;
+                $itemSubtotal = $product->price * $quantity;
+                $subtotalPrice += $itemSubtotal;
 
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
+                    'product_name' => $product->name,
                     'quantity' => $quantity,
                     'price' => $product->price,
                 ]);
@@ -71,19 +90,20 @@ class OrderController extends Controller
                 $product->decrement('stock', $quantity);
             }
 
-            $workerDiscountAmount = $user->isWorker()
-                ? (int) floor($totalPrice * 10 / 100)
+            $workerDiscountAmount = !$isOfflineOrder && $customer?->isWorker()
+                ? (int) floor($subtotalPrice * 10 / 100)
                 : 0;
 
-            $priceAfterWorkerDiscount = $totalPrice - $workerDiscountAmount;
+            $priceAfterWorkerDiscount = $subtotalPrice - $workerDiscountAmount;
             $voucherDiscountAmount = 0;
             $userVoucherId = null;
 
-            if ($request->filled('user_voucher_id')) {
+            if (!$isOfflineOrder && $request->filled('user_voucher_id')) {
                 $userVoucher = UserVoucher::with('voucher')
                     ->where('id', $request->user_voucher_id)
-                    ->where('user_id', Auth::id())
+                    ->where('user_id', $customer->id)
                     ->where('status', 'unused')
+                    ->lockForUpdate()
                     ->firstOrFail();
 
                 $voucher = $userVoucher->voucher;
@@ -106,44 +126,92 @@ class OrderController extends Controller
 
             $order->update([
                 'user_voucher_id' => $userVoucherId,
-                'total_price' => $totalPrice - $discountAmount,
+                'total_price' => $subtotalPrice - $discountAmount,
                 'discount_amount' => $discountAmount,
             ]);
 
-            Notification::create([
-                'user_id' => $order->user_id,
-                'order_id' => $order->id,
-                'title' => 'Checkout berhasil',
-                'message' => 'Pesanan kamu sudah masuk dan sedang diproses.',
-                'type' => 'checkout',
-            ]);
+            if ($customer) {
+                Notification::create([
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                    'title' => 'Checkout berhasil',
+                    'message' => 'Pesanan kamu sudah masuk dan sedang diproses.',
+                    'type' => 'checkout',
+                ]);
+            }
 
-            return $order->fresh();
+            $receipt = null;
+
+            if ($isOfflineOrder) {
+                $receipt = $this->createReceipt(
+                    $order->fresh(['items.product', 'user', 'userVoucher.voucher']),
+                    'print',
+                    'pending',
+                    $actor->name
+                );
+            } elseif ($request->payment_method === 'online') {
+                $receipt = $this->createReceipt(
+                    $order->fresh(['items.product', 'user', 'userVoucher.voucher']),
+                    'digital',
+                    'not_needed'
+                );
+            }
+
+            return [
+                'order' => $order->fresh(['items.product', 'receipt']),
+                'receipt' => $receipt,
+            ];
         });
 
         return response()->json([
             'message' => 'Order berhasil dibuat',
-            'order' => $order,
+            'order' => $result['order'],
+            'receipt' => $result['receipt'],
         ]);
     }
 
-    public function complete($id)
+    public function complete(Request $request, $id)
     {
-        $order = Order::findOrFail($id);
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::with(['user', 'items.product', 'receipt', 'userVoucher.voucher'])
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        $order->status = 'selesai';
-        $order->save();
+            $order->update([
+                'status' => 'selesai',
+            ]);
 
-        Notification::create([
-            'user_id' => $order->user_id,
-            'order_id' => $order->id,
-            'title' => 'Pesanan siap diambil',
-            'message' => 'Pesanan kamu sudah siap diambil di koperasi.',
-            'type' => 'pickup',
-        ]);
+            if ($order->user_id) {
+                Notification::create([
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                    'title' => 'Pesanan siap diambil',
+                    'message' => 'Pesanan kamu sudah siap diambil di koperasi.',
+                    'type' => 'pickup',
+                ]);
+            }
+
+            $receipt = null;
+
+            if ($order->payment_method === 'cash' && $order->order_source === 'app') {
+                $receipt = $this->createReceipt(
+                    $order->fresh(['items.product', 'user', 'userVoucher.voucher']),
+                    'print',
+                    'pending',
+                    $request->user()->name
+                );
+            }
+
+            return [
+                'order' => $order->fresh(['items.product', 'receipt']),
+                'receipt' => $receipt,
+            ];
+        });
 
         return response()->json([
             'message' => 'Pesanan selesai',
+            'order' => $result['order'],
+            'receipt' => $result['receipt'],
         ]);
     }
 
@@ -151,11 +219,16 @@ class OrderController extends Controller
     {
         DB::transaction(function () use ($id) {
             $order = Order::lockForUpdate()->findOrFail($id);
+
+            $order->update([
+                'status' => 'diambil',
+            ]);
+
+            if (!$order->user_id) {
+                return;
+            }
+
             $user = User::lockForUpdate()->findOrFail($order->user_id);
-
-            $order->status = 'diambil';
-            $order->save();
-
             $earnedPoints = intdiv($order->total_price, 100);
 
             if ($earnedPoints > 0) {
@@ -174,5 +247,47 @@ class OrderController extends Controller
         return response()->json([
             'message' => 'Pesanan sudah diambil',
         ]);
+    }
+
+    private function createReceipt(
+        Order $order,
+        string $receiptType,
+        string $printStatus,
+        ?string $cashierName = null
+    ): Receipt {
+        $subtotalPrice = $order->items->sum(function ($item) {
+            return $item->price * $item->quantity;
+        });
+
+        $workerDiscountAmount = $order->order_source === 'app' && $order->user?->isWorker()
+            ? (int) floor($subtotalPrice * 10 / 100)
+            : 0;
+
+        $voucherDiscountAmount = max($order->discount_amount - $workerDiscountAmount, 0);
+        $itemCount = $order->items->sum('quantity');
+
+        return Receipt::updateOrCreate(
+            ['order_id' => $order->id],
+            [
+                'receipt_number' => $this->buildReceiptNumber($order->id),
+                'receipt_type' => $receiptType,
+                'print_status' => $printStatus,
+                'customer_name' => $order->customer_name ?: ($order->user->name ?? 'Pelanggan'),
+                'customer_role' => $order->user?->role,
+                'cashier_name' => $cashierName,
+                'payment_method' => $order->payment_method,
+                'order_source' => $order->order_source,
+                'subtotal_price' => $subtotalPrice,
+                'worker_discount_amount' => $workerDiscountAmount,
+                'voucher_discount_amount' => $voucherDiscountAmount,
+                'total_price' => $order->total_price,
+                'item_count' => $itemCount,
+            ]
+        );
+    }
+
+    private function buildReceiptNumber(int $orderId): string
+    {
+        return 'KSM-' . now()->format('Ymd') . '-' . str_pad((string) $orderId, 6, '0', STR_PAD_LEFT);
     }
 }

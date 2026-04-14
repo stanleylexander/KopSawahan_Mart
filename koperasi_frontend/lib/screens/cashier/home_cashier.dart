@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/order_service.dart';
+import '../receipt/receipt_detail_page.dart';
 import '../drawer/drawer_cashier.dart';
 
 class HomeCashier extends StatefulWidget {
@@ -44,10 +45,26 @@ class _HomeCashierState extends State<HomeCashier> {
   }
 
   Future<void> completeOrder(int orderId) async {
-    final success = await OrderService.completeOrder(orderId);
+    final response = await OrderService.completeOrder(orderId);
 
-    if (success) {
+    if (response != null) {
       showMessage("Pesanan selesai dikemas");
+
+      final receipt = response["receipt"];
+
+      if (receipt is Map<String, dynamic> && mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReceiptDetailPage(
+              initialReceipt: receipt,
+              showPrintButton: true,
+              autoPrintOnOpen: true,
+            ),
+          ),
+        );
+      }
+
       await loadOrders();
     } else {
       showMessage("Gagal update status");
@@ -77,10 +94,16 @@ class _HomeCashierState extends State<HomeCashier> {
         return true;
       }
 
-      final userName = (order['user']['name'] ?? '').toString().toLowerCase();
+      final userName = (order['user']?['name'] ?? order['customer_name'] ?? '')
+          .toString()
+          .toLowerCase();
       final orderId = order['id'].toString().toLowerCase();
       final productNames = (order['items'] as List)
-          .map((item) => (item['product']['name'] ?? '').toString().toLowerCase())
+          .map((item) {
+            return (item['product_name'] ?? item['product']?['name'] ?? '')
+                .toString()
+                .toLowerCase();
+          })
           .join(' ');
 
       return userName.contains(keyword) ||
@@ -211,7 +234,7 @@ class _HomeCashierState extends State<HomeCashier> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "${order['user']['name']}",
+              "${order['user']?['name'] ?? order['customer_name'] ?? 'Pelanggan'}",
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -240,7 +263,7 @@ class _HomeCashierState extends State<HomeCashier> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
-                  "- ${item['product']['name']} (${item['quantity']}x)",
+                  "- ${item['product_name'] ?? item['product']?['name'] ?? 'Produk'} (${item['quantity']}x)",
                 ),
               );
             }).toList(),

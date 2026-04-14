@@ -91,4 +91,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class);
     }
+
+    public function receipts()
+    {
+        return $this->hasManyThrough(Receipt::class, Order::class);
+    }
 }

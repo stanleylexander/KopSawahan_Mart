@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
+import '../receipt/receipt_detail_page.dart';
 
 class QrisMember extends StatefulWidget {
   final List<Map<String, dynamic>> items;
@@ -78,6 +79,19 @@ class _QrisMemberState extends State<QrisMember> {
     }
 
     showMessage("Pembayaran berhasil");
+    final receipt = response?["receipt"];
+
+    if (receipt is Map<String, dynamic>) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReceiptDetailPage(
+            initialReceipt: receipt,
+          ),
+        ),
+      );
+    }
+
     Navigator.pop(context, true);
   }
 

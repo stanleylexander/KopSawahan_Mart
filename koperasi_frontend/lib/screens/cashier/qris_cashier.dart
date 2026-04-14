@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
+import '../receipt/receipt_detail_page.dart';
 
 class QrisCashier extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final int totalPrice;
+  final String? customerName;
 
   const QrisCashier({
     super.key,
     required this.items,
     required this.totalPrice,
+    this.customerName,
   });
 
   @override
@@ -38,6 +41,8 @@ class _QrisCashierState extends State<QrisCashier> {
       items: widget.items,
       totalPrice: widget.totalPrice,
       status: "diambil",
+      orderSource: "offline",
+      customerName: widget.customerName,
     );
 
     if (response == null) {
@@ -56,6 +61,21 @@ class _QrisCashierState extends State<QrisCashier> {
     }
 
     showMessage("Pembayaran berhasil");
+    final receipt = response["receipt"];
+
+    if (receipt is Map<String, dynamic>) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReceiptDetailPage(
+            initialReceipt: receipt,
+            showPrintButton: true,
+            autoPrintOnOpen: true,
+          ),
+        ),
+      );
+    }
+
     Navigator.pop(context, true);
   }
 

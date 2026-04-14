@@ -9,6 +9,8 @@ class Order extends Model
     protected $fillable = [
         'user_id',
         'user_voucher_id',
+        'order_source',
+        'customer_name',
         'payment_method',
         'status',
         'total_price',
@@ -33,5 +35,10 @@ class Order extends Model
     public function notifications()
     {
         return $this->hasMany(Notification::class);
+    }
+
+    public function receipt()
+    {
+        return $this->hasOne(Receipt::class);
     }
 }

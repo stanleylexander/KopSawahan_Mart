@@ -7,6 +7,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReceiptController;
 
 use Illuminate\Http\Request;
 
@@ -29,7 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// MEMBER 
+// MEMBER & WORKER
 Route::middleware('auth:sanctum')->group(function () {
 
     // VOUCHER
@@ -41,6 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::get('/receipts', [ReceiptController::class, 'myReceipts']);
+    Route::get('/receipts/{id}', [ReceiptController::class, 'show']);
 
 });
 
@@ -72,6 +75,8 @@ Route::middleware(['auth:sanctum', 'role:cashier'])->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders/{id}/complete', [OrderController::class, 'complete']);
     Route::post('/orders/{id}/taken', [OrderController::class, 'markAsTaken']);
+    Route::get('/receipts/{id}', [ReceiptController::class, 'show']);
+    Route::post('/receipts/{id}/printed', [ReceiptController::class, 'markAsPrinted']);
 
 });
 

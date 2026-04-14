@@ -5,6 +5,7 @@ import '../../services/order_service.dart';
 import '../../class/product.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
+import '../receipt/receipt_detail_page.dart';
 import 'qris_cashier.dart';
 
 class ShopCashier extends StatefulWidget {
@@ -21,6 +22,7 @@ class _ShopCashierState extends State<ShopCashier> {
 
   bool isLoading = true;
   TextEditingController searchController = TextEditingController();
+  TextEditingController customerNameController = TextEditingController();
   String? selectedPaymentMethod;
 
   @override
@@ -28,6 +30,13 @@ class _ShopCashierState extends State<ShopCashier> {
     super.initState();
     fetchProducts();
     loadCart();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    customerNameController.dispose();
+    super.dispose();
   }
 
   // 🔥 GET PRODUCT
@@ -160,6 +169,16 @@ class _ShopCashierState extends State<ShopCashier> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  TextField(
+                    controller: customerNameController,
+                    decoration: const InputDecoration(
+                      labelText: "Nama pelanggan (opsional)",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
                   const Text(
                     "Metode Pembayaran",
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -234,6 +253,8 @@ class _ShopCashierState extends State<ShopCashier> {
                         items: items,
                         totalPrice: total.toInt(),
                         status: "diambil",
+                        orderSource: "offline",
+                        customerName: customerNameController.text.trim(),
                       );
 
                       if (response != null) {
@@ -244,13 +265,29 @@ class _ShopCashierState extends State<ShopCashier> {
                           selectedPaymentMethod = null;
                         });
 
+                        customerNameController.clear();
                         Navigator.pop(context);
 
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final receipt = response["receipt"];
+
+                        if (receipt is Map<String, dynamic> && mounted) {
+                          await Navigator.push(
+                            this.context,
+                            MaterialPageRoute(
+                              builder: (_) => ReceiptDetailPage(
+                                initialReceipt: receipt,
+                                showPrintButton: true,
+                                autoPrintOnOpen: true,
+                              ),
+                            ),
+                          );
+                        }
+
+                        ScaffoldMessenger.of(this.context).showSnackBar(
                           const SnackBar(content: Text("Checkout berhasil (Cash)")),
                         );
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        ScaffoldMessenger.of(this.context).showSnackBar(
                           const SnackBar(content: Text("Checkout gagal")),
                         );
                       }
@@ -265,6 +302,7 @@ class _ShopCashierState extends State<ShopCashier> {
                           builder: (_) => QrisCashier(
                             items: items,
                             totalPrice: total.toInt(),
+                            customerName: customerNameController.text.trim(),
                           ),
                         ),
                       );
@@ -275,6 +313,7 @@ class _ShopCashierState extends State<ShopCashier> {
                           selectedPaymentMethod = null;
                         });
 
+                        customerNameController.clear();
                         Navigator.pop(context);
                       }
                     }
