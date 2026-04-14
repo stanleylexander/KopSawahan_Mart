@@ -7,13 +7,11 @@ import '../receipt/receipt_detail_page.dart';
 class QrisCashier extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final int totalPrice;
-  final String? customerName;
 
   const QrisCashier({
     super.key,
     required this.items,
     required this.totalPrice,
-    this.customerName,
   });
 
   @override
@@ -42,7 +40,6 @@ class _QrisCashierState extends State<QrisCashier> {
       totalPrice: widget.totalPrice,
       status: "diambil",
       orderSource: "offline",
-      customerName: widget.customerName,
     );
 
     if (response == null) {

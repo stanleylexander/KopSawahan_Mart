@@ -144,8 +144,8 @@ class PrinterService {
     bytes.addAll(generator.hr());
     bytes.addAll(generator.text("No Nota : ${receipt['receipt_number'] ?? '-'}"));
     bytes.addAll(generator.text("Tanggal : ${ReceiptHelper.formatDateTime(receipt['created_at'])}"));
-    bytes.addAll(generator.text("Order   : #${order['id'] ?? '-'}"));
-    bytes.addAll(generator.text("Pelanggan: ${receipt['customer_name'] ?? '-'}"));
+    bytes.addAll(generator.text("Order   : #${order['id'] ?? receipt['order_id'] ?? '-'}"));
+    bytes.addAll(generator.text("Kasir   : ${receipt['cashier_name'] ?? '-'}"));
     bytes.addAll(generator.text("Bayar   : ${receipt['payment_method'] ?? '-'}"));
     bytes.addAll(generator.hr());
 
@@ -200,6 +200,28 @@ class PrinterService {
         PosColumn(text: "Diskon Voucher", width: 7),
         PosColumn(
           text: "-${ReceiptHelper.formatCurrency(receipt['voucher_discount_amount'] ?? 0)}",
+          width: 5,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]));
+    }
+
+    if ((receipt['amount_paid'] ?? 0) > 0) {
+      bytes.addAll(generator.row([
+        PosColumn(text: "Uang Bayar", width: 7),
+        PosColumn(
+          text: ReceiptHelper.formatCurrency(receipt['amount_paid'] ?? 0),
+          width: 5,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]));
+    }
+
+    if ((receipt['change_amount'] ?? 0) > 0) {
+      bytes.addAll(generator.row([
+        PosColumn(text: "Kembalian", width: 7),
+        PosColumn(
+          text: ReceiptHelper.formatCurrency(receipt['change_amount'] ?? 0),
           width: 5,
           styles: const PosStyles(align: PosAlign.right),
         ),

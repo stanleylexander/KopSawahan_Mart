@@ -22,7 +22,7 @@ class _ShopCashierState extends State<ShopCashier> {
 
   bool isLoading = true;
   TextEditingController searchController = TextEditingController();
-  TextEditingController customerNameController = TextEditingController();
+  TextEditingController amountPaidController = TextEditingController();
   String? selectedPaymentMethod;
 
   @override
@@ -35,7 +35,7 @@ class _ShopCashierState extends State<ShopCashier> {
   @override
   void dispose() {
     searchController.dispose();
-    customerNameController.dispose();
+    amountPaidController.dispose();
     super.dispose();
   }
 
@@ -169,16 +169,6 @@ class _ShopCashierState extends State<ShopCashier> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: customerNameController,
-                    decoration: const InputDecoration(
-                      labelText: "Nama pelanggan (opsional)",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
                   const Text(
                     "Metode Pembayaran",
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -207,6 +197,19 @@ class _ShopCashierState extends State<ShopCashier> {
                       });
                     },
                   ),
+
+                  if (selectedPaymentMethod == "cash") ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: amountPaidController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "Uang yang diberikan customer",
+                        border: OutlineInputBorder(),
+                        prefixText: "Rp ",
+                      ),
+                    ),
+                  ],
                 ],
               ),
 
@@ -234,6 +237,16 @@ class _ShopCashierState extends State<ShopCashier> {
                       return;
                     }
 
+                    if (selectedPaymentMethod == "cash" &&
+                        amountPaidController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Masukkan uang yang diberikan customer"),
+                        ),
+                      );
+                      return;
+                    }
+
                     final items = cartItems.map((item) {
                       return {
                         "product_id": item.id,
@@ -247,6 +260,14 @@ class _ShopCashierState extends State<ShopCashier> {
                     }
 
                     if (selectedPaymentMethod == "cash") {
+                      final amountPaid = int.tryParse(amountPaidController.text.trim());
+
+                      if (amountPaid == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Nominal uang tidak valid")),
+                        );
+                        return;
+                      }
 
                       final response = await OrderService.createOrder(
                         paymentMethod: "cash",
@@ -254,7 +275,7 @@ class _ShopCashierState extends State<ShopCashier> {
                         totalPrice: total.toInt(),
                         status: "diambil",
                         orderSource: "offline",
-                        customerName: customerNameController.text.trim(),
+                        amountPaid: amountPaid,
                       );
 
                       if (response != null) {
@@ -265,7 +286,7 @@ class _ShopCashierState extends State<ShopCashier> {
                           selectedPaymentMethod = null;
                         });
 
-                        customerNameController.clear();
+                        amountPaidController.clear();
                         Navigator.pop(context);
 
                         final receipt = response["receipt"];
@@ -302,7 +323,6 @@ class _ShopCashierState extends State<ShopCashier> {
                           builder: (_) => QrisCashier(
                             items: items,
                             totalPrice: total.toInt(),
-                            customerName: customerNameController.text.trim(),
                           ),
                         ),
                       );
@@ -313,7 +333,7 @@ class _ShopCashierState extends State<ShopCashier> {
                           selectedPaymentMethod = null;
                         });
 
-                        customerNameController.clear();
+                        amountPaidController.clear();
                         Navigator.pop(context);
                       }
                     }

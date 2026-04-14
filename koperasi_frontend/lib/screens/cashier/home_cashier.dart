@@ -52,7 +52,9 @@ class _HomeCashierState extends State<HomeCashier> {
 
       final receipt = response["receipt"];
 
-      if (receipt is Map<String, dynamic> && mounted) {
+      if (receipt is Map<String, dynamic> &&
+          receipt['receipt_type'] == 'print' &&
+          mounted) {
         await Navigator.push(
           context,
           MaterialPageRoute(

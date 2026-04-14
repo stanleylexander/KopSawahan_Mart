@@ -44,7 +44,10 @@ class _ReceiptListPageState extends State<ReceiptListPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ReceiptDetailPage(receiptId: receiptId),
+        builder: (_) => ReceiptDetailPage(
+          receiptId: receiptId,
+          initialReceipt: Map<String, dynamic>.from(receipt),
+        ),
       ),
     );
   }
@@ -123,7 +126,7 @@ class _ReceiptListPageState extends State<ReceiptListPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "${receipt['customer_name'] ?? '-'} • ${(receipt['payment_method'] ?? '-').toString().toUpperCase()}",
+                    "Kasir: ${receipt['cashier_name'] ?? '-'} • ${(receipt['payment_method'] ?? '-').toString().toUpperCase()}",
                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                 ],

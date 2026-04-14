@@ -34,7 +34,7 @@ class OrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'user_voucher_id' => 'nullable|integer|exists:user_vouchers,id',
             'order_source' => 'nullable|in:app,offline',
-            'customer_name' => 'nullable|string|max:255',
+            'amount_paid' => 'nullable|integer|min:0',
         ]);
 
         $actor = $request->user();
@@ -51,9 +51,7 @@ class OrderController extends Controller
                 ? null
                 : User::lockForUpdate()->findOrFail($actor->id);
 
-            $customerName = $isOfflineOrder
-                ? ($request->customer_name ?: 'Pelanggan Offline')
-                : $customer->name;
+            $customerName = $customer?->name;
 
             $order = Order::create([
                 'user_id' => $customer?->id,
@@ -123,10 +121,25 @@ class OrderController extends Controller
             }
 
             $discountAmount = $workerDiscountAmount + $voucherDiscountAmount;
+            $finalTotalPrice = $subtotalPrice - $discountAmount;
+            $amountPaid = null;
+            $changeAmount = 0;
+
+            if ($isOfflineOrder && $request->payment_method === 'cash') {
+                $amountPaid = (int) $request->input('amount_paid', 0);
+
+                if ($amountPaid < $finalTotalPrice) {
+                    throw new HttpResponseException(response()->json([
+                        'message' => 'Uang yang diberikan customer kurang',
+                    ], 422));
+                }
+
+                $changeAmount = $amountPaid - $finalTotalPrice;
+            }
 
             $order->update([
                 'user_voucher_id' => $userVoucherId,
-                'total_price' => $subtotalPrice - $discountAmount,
+                'total_price' => $finalTotalPrice,
                 'discount_amount' => $discountAmount,
             ]);
 
@@ -147,7 +160,9 @@ class OrderController extends Controller
                     $order->fresh(['items.product', 'user', 'userVoucher.voucher']),
                     'print',
                     'pending',
-                    $actor->name
+                    $actor->name,
+                    $amountPaid,
+                    $changeAmount
                 );
             } elseif ($request->payment_method === 'online') {
                 $receipt = $this->createReceipt(
@@ -191,15 +206,20 @@ class OrderController extends Controller
                 ]);
             }
 
-            $receipt = null;
+            $receipt = $order->receipt;
 
             if ($order->payment_method === 'cash' && $order->order_source === 'app') {
                 $receipt = $this->createReceipt(
                     $order->fresh(['items.product', 'user', 'userVoucher.voucher']),
-                    'print',
-                    'pending',
+                    'digital',
+                    'not_needed',
                     $request->user()->name
                 );
+            } elseif ($receipt) {
+                $receipt->update([
+                    'cashier_name' => $request->user()->name,
+                ]);
+                $receipt = $receipt->fresh(['order.items', 'order.user']);
             }
 
             return [
@@ -253,7 +273,9 @@ class OrderController extends Controller
         Order $order,
         string $receiptType,
         string $printStatus,
-        ?string $cashierName = null
+        ?string $cashierName = null,
+        ?int $amountPaid = null,
+        int $changeAmount = 0
     ): Receipt {
         $subtotalPrice = $order->items->sum(function ($item) {
             return $item->price * $item->quantity;
@@ -266,7 +288,7 @@ class OrderController extends Controller
         $voucherDiscountAmount = max($order->discount_amount - $workerDiscountAmount, 0);
         $itemCount = $order->items->sum('quantity');
 
-        return Receipt::updateOrCreate(
+        $receipt = Receipt::updateOrCreate(
             ['order_id' => $order->id],
             [
                 'receipt_number' => $this->buildReceiptNumber($order->id),
@@ -281,9 +303,16 @@ class OrderController extends Controller
                 'worker_discount_amount' => $workerDiscountAmount,
                 'voucher_discount_amount' => $voucherDiscountAmount,
                 'total_price' => $order->total_price,
+                'amount_paid' => $amountPaid,
+                'change_amount' => $changeAmount,
                 'item_count' => $itemCount,
             ]
         );
+
+        return $receipt->fresh([
+            'order.items.product',
+            'order.user',
+        ]);
     }
 
     private function buildReceiptNumber(int $orderId): string

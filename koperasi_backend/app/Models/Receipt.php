@@ -20,6 +20,8 @@ class Receipt extends Model
         'worker_discount_amount',
         'voucher_discount_amount',
         'total_price',
+        'amount_paid',
+        'change_amount',
         'item_count',
         'printed_at',
     ];

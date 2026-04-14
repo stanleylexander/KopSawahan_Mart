@@ -21,6 +21,7 @@ class OrderService {
     int? userVoucherId,
     String orderSource = "app",
     String? customerName,
+    int? amountPaid,
   }) async {
     final response = await http.post(
       Uri.parse("${Api.baseUrl}/orders"),
@@ -33,6 +34,7 @@ class OrderService {
         "order_source": orderSource,
         if (userVoucherId != null) "user_voucher_id": userVoucherId,
         if (customerName != null && customerName.isNotEmpty) "customer_name": customerName,
+        if (amountPaid != null) "amount_paid": amountPaid,
       }),
     );
 

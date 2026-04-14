@@ -46,11 +46,7 @@ class _ReceiptDetailPageState extends State<ReceiptDetailPage> {
     if (widget.initialReceipt != null) {
       setState(() {
         receipt = widget.initialReceipt;
-        isLoading = false;
       });
-
-      await tryAutoPrint();
-      return;
     }
 
     if (widget.receiptId == null) {
@@ -67,7 +63,7 @@ class _ReceiptDetailPageState extends State<ReceiptDetailPage> {
     }
 
     setState(() {
-      receipt = data;
+      receipt = data ?? receipt;
       isLoading = false;
     });
 
@@ -338,6 +334,7 @@ class _ReceiptDetailPageState extends State<ReceiptDetailPage> {
     }
 
     final order = receipt?['order'] ?? {};
+    final orderId = order['id'] ?? receipt?['order_id'] ?? '-';
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -399,8 +396,8 @@ class _ReceiptDetailPageState extends State<ReceiptDetailPage> {
           const SizedBox(height: 16),
           buildInfoRow("No Nota", receipt?['receipt_number'] ?? "-"),
           buildInfoRow("Tanggal", ReceiptHelper.formatDateTime(receipt?['created_at'])),
-          buildInfoRow("Order", "#${order['id'] ?? '-'}"),
-          buildInfoRow("Pelanggan", receipt?['customer_name'] ?? "-"),
+          buildInfoRow("Order", "#$orderId"),
+          buildInfoRow("Kasir", receipt?['cashier_name'] ?? "-"),
           buildInfoRow("Pembayaran", (receipt?['payment_method'] ?? "-").toString().toUpperCase()),
           const SizedBox(height: 8),
           buildDashedLine(),
@@ -430,6 +427,10 @@ class _ReceiptDetailPageState extends State<ReceiptDetailPage> {
               receipt?['voucher_discount_amount'] ?? 0,
               isNegative: true,
             ),
+          if ((receipt?['amount_paid'] ?? 0) > 0)
+            buildSummaryRow("Uang Bayar", receipt?['amount_paid'] ?? 0),
+          if ((receipt?['change_amount'] ?? 0) > 0)
+            buildSummaryRow("Kembalian", receipt?['change_amount'] ?? 0),
           buildSummaryRow(
             "Total Bayar",
             receipt?['total_price'] ?? 0,
