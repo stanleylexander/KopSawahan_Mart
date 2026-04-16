@@ -41,6 +41,7 @@ class ProductController extends Controller
 
             $request->validate([
                 'name' => 'required',
+                'barcode' => 'nullable|string|max:255|unique:products,barcode',
                 'price' => 'required|numeric',
                 'stock' => 'required|integer',
                 'image' => 'nullable|image|mimes:jpg,jpeg,png'
@@ -54,6 +55,7 @@ class ProductController extends Controller
 
             $product = Product::create([
                 'name' => $request->name,
+                'barcode' => $request->barcode,
                 'price' => $request->price,
                 'stock' => $request->stock,
                 'description' => $request->description,
@@ -103,6 +105,7 @@ class ProductController extends Controller
 
         $request->validate([
             'name' => 'sometimes|required',
+            'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
             'price' => 'sometimes|required|numeric',
             'stock' => 'sometimes|required|integer',
             'image' => 'nullable|image|mimes:jpg,jpeg,png'
@@ -124,6 +127,7 @@ class ProductController extends Controller
 
         $product->update([
             'name' => $request->name ?? $product->name,
+            'barcode' => $request->barcode ?? $product->barcode,
             'price' => $request->price ?? $product->price,
             'stock' => $request->stock ?? $product->stock,
             'description' => $request->description ?? $product->description,

@@ -65,6 +65,7 @@ class ProductService {
   // TAMBAH PRODUK
   static Future<bool> addProduct(
     String name,
+    String barcode,
     String price,
     String stock,
     String description,
@@ -82,6 +83,7 @@ class ProductService {
 
       request.fields.addAll({
         "name": name,
+        "barcode": barcode,
         "price": price,
         "stock": stock,
         "description": description,
@@ -123,6 +125,7 @@ class ProductService {
   static Future<bool> updateProduct(
     int id,
     String name,
+    String barcode,
     String price,
     String stock,
     String description,
@@ -143,6 +146,7 @@ class ProductService {
 
       request.fields.addAll({
         "name": name,
+        "barcode": barcode,
         "price": price,
         "stock": stock,
         "description": description,

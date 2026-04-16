@@ -2,6 +2,7 @@ class Product {
 
   final int id;
   final String name;
+  final String barcode;
   final String description;
   final int price;
   final int stock;
@@ -10,6 +11,7 @@ class Product {
   Product({
     required this.id,
     required this.name,
+    required this.barcode,
     required this.description,
     required this.price,
     required this.stock,
@@ -20,6 +22,7 @@ class Product {
     return Product(
       id: json['id'],
       name: json['name'],
+      barcode: json['barcode'] ?? "",
       description: json['description'] ?? "",
       price: json['price'],
       stock: json['stock'],

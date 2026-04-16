@@ -16,6 +16,7 @@ class DetailProductPage extends StatefulWidget {
 class _DetailProductPageState extends State<DetailProductPage> {
 
   late TextEditingController nameController;
+  late TextEditingController barcodeController;
   late TextEditingController priceController;
   late TextEditingController stockController;
   late TextEditingController descController;
@@ -27,6 +28,7 @@ class _DetailProductPageState extends State<DetailProductPage> {
     super.initState();
 
     nameController = TextEditingController(text: widget.product.name);
+    barcodeController = TextEditingController(text: widget.product.barcode);
     priceController = TextEditingController(text: widget.product.price.toString());
     stockController = TextEditingController(text: widget.product.stock.toString());
     descController = TextEditingController(text: widget.product.description);
@@ -49,6 +51,7 @@ class _DetailProductPageState extends State<DetailProductPage> {
     bool success = await ProductService.updateProduct(
       widget.product.id,
       nameController.text,
+      barcodeController.text,
       priceController.text,
       stockController.text,
       descController.text,
@@ -93,6 +96,11 @@ class _DetailProductPageState extends State<DetailProductPage> {
             TextField(
               controller: nameController,
               decoration: const InputDecoration(labelText: "Nama"),
+            ),
+
+            TextField(
+              controller: barcodeController,
+              decoration: const InputDecoration(labelText: "Barcode"),
             ),
 
             TextField(

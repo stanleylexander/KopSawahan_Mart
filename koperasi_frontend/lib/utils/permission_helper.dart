@@ -7,4 +7,9 @@ class PermissionHelper {
     await Permission.bluetoothScan.request();
     await Permission.location.request();
   }
+
+  static Future<bool> requestCameraPermission() async {
+    final status = await Permission.camera.request();
+    return status.isGranted;
+  }
 }

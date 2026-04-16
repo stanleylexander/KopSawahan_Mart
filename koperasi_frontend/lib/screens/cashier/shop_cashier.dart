@@ -6,7 +6,9 @@ import '../../class/product.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
 import '../receipt/receipt_detail_page.dart';
+import 'barcode_scanner_page.dart';
 import 'qris_cashier.dart';
+import '../../utils/permission_helper.dart';
 
 class ShopCashier extends StatefulWidget {
   const ShopCashier({super.key});
@@ -66,6 +68,60 @@ class _ShopCashierState extends State<ShopCashier> {
     setState(() {
       filteredProducts = results;
     });
+  }
+
+  Product? findProductByBarcode(String barcode) {
+    try {
+      return products.firstWhere(
+        (product) => product.barcode.trim() == barcode.trim(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> openBarcodeScanner() async {
+    final isGranted = await PermissionHelper.requestCameraPermission();
+
+    if (!isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Izin kamera diperlukan")),
+      );
+      return;
+    }
+
+    final scannedBarcode = await Navigator.push<String?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const BarcodeScannerPage(),
+      ),
+    );
+
+    if (scannedBarcode == null || scannedBarcode.isEmpty) return;
+
+    final product = findProductByBarcode(scannedBarcode);
+
+    if (product == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Barcode $scannedBarcode belum terdaftar di produk"),
+        ),
+      );
+      return;
+    }
+
+    await CartService.addToCart(product);
+    await loadCart();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("${product.name} masuk ke keranjang"),
+      ),
+    );
   }
 
   // 🛒 OPEN CART
@@ -449,6 +505,13 @@ class _ShopCashierState extends State<ShopCashier> {
       appBar: AppBar(
         title: const Text("POS Kasir"),
         backgroundColor: Colors.red.shade700,
+        actions: [
+          IconButton(
+            onPressed: openBarcodeScanner,
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: "Scan Barcode",
+          ),
+        ],
       ),
 
       body: Column(

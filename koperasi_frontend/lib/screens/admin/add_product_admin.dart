@@ -13,6 +13,7 @@ class AddProductPage extends StatefulWidget {
 class _AddProductPageState extends State<AddProductPage> {
 
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController barcodeController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
   final TextEditingController stockController = TextEditingController();
   final TextEditingController descController = TextEditingController();
@@ -45,6 +46,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
     bool success = await ProductService.addProduct(
       nameController.text,
+      barcodeController.text,
       priceController.text,
       stockController.text,
       descController.text,
@@ -107,6 +109,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
             // 🔥 INPUT FIELD
             _buildTextField(nameController, "Nama Produk"),
+            _buildTextField(barcodeController, "Barcode"),
             _buildTextField(priceController, "Harga", isNumber: true),
             _buildTextField(stockController, "Stok", isNumber: true),
             _buildTextField(descController, "Deskripsi", maxLines: 3),
