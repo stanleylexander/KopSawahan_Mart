@@ -15,6 +15,7 @@ class _HomeCashierState extends State<HomeCashier> {
   bool isLoading = true;
   String selectedTab = 'pending';
   final TextEditingController searchController = TextEditingController();
+  final Set<int> expandedOrderIds = {};
 
   @override
   void initState() {
@@ -190,7 +191,7 @@ class _HomeCashierState extends State<HomeCashier> {
           const SizedBox(width: 12),
           buildTabButton(
             value: 'selesai',
-            label: 'Sudah Dikemas',
+            label: 'Sudah Diambil',
           ),
         ],
       ),
@@ -203,6 +204,7 @@ class _HomeCashierState extends State<HomeCashier> {
         onPressed: () => completeOrder(order['id']),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -215,11 +217,79 @@ class _HomeCashierState extends State<HomeCashier> {
       onPressed: () => markOrderAsTaken(order['id']),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
       ),
       child: const Text("Sudah Diambil"),
+    );
+  }
+
+  Widget buildProductDetails(dynamic order) {
+    final orderId = order['id'] as int;
+    final isExpanded = expandedOrderIds.contains(orderId);
+    final items = (order['items'] as List?) ?? [];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.red.shade100),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: PageStorageKey("order_items_$orderId"),
+          initiallyExpanded: isExpanded,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          collapsedIconColor: Colors.red.shade700,
+          iconColor: Colors.red.shade700,
+          onExpansionChanged: (value) {
+            setState(() {
+              if (value) {
+                expandedOrderIds.add(orderId);
+              } else {
+                expandedOrderIds.remove(orderId);
+              }
+            });
+          },
+          title: Text(
+            "Detail Produk",
+            style: TextStyle(
+              color: Colors.red.shade700,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          children: items.map<Widget>((item) {
+            final productName = item['product_name'] ?? item['product']?['name'] ?? 'Produk';
+            final quantity = item['quantity'] ?? 0;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "- ",
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      "$productName ($quantity x)",
+                      style: TextStyle(color: Colors.grey[800]),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
@@ -261,14 +331,7 @@ class _HomeCashierState extends State<HomeCashier> {
               ),
             ),
             const SizedBox(height: 10),
-            ...order['items'].map<Widget>((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  "- ${item['product_name'] ?? item['product']?['name'] ?? 'Produk'} (${item['quantity']}x)",
-                ),
-              );
-            }).toList(),
+            buildProductDetails(order),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

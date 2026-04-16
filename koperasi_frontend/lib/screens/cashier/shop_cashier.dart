@@ -17,7 +17,8 @@ class ShopCashier extends StatefulWidget {
   State<ShopCashier> createState() => _ShopCashierState();
 }
 
-class _ShopCashierState extends State<ShopCashier> {
+class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin {
+  final GlobalKey _cartButtonKey = GlobalKey();
   List<Product> products = [];
   List<Product> filteredProducts = [];
   List<Cart> cartItems = [];
@@ -112,7 +113,10 @@ class _ShopCashierState extends State<ShopCashier> {
       return;
     }
 
-    await CartService.addToCart(product);
+    await Future.wait([
+      CartService.addToCart(product),
+      animateProductToCartFromCenter(),
+    ]);
     await loadCart();
 
     if (!mounted) return;
@@ -131,6 +135,132 @@ class _ShopCashierState extends State<ShopCashier> {
       isScrollControlled: true,
       builder: (_) => buildCartSheet(),
     );
+  }
+
+  Future<void> animateProductToCart(BuildContext sourceContext) async {
+    final overlay = Overlay.of(context);
+    final sourceRenderBox = sourceContext.findRenderObject() as RenderBox?;
+    final targetRenderBox = _cartButtonKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (sourceRenderBox == null || targetRenderBox == null) {
+      return;
+    }
+
+    final sourcePosition = sourceRenderBox.localToGlobal(Offset.zero);
+    final targetPosition = targetRenderBox.localToGlobal(Offset.zero);
+    final sourceSize = sourceRenderBox.size;
+    final targetSize = targetRenderBox.size;
+
+    final startOffset = Offset(
+      sourcePosition.dx + (sourceSize.width / 2) - 12,
+      sourcePosition.dy + (sourceSize.height / 2) - 12,
+    );
+    final endOffset = Offset(
+      targetPosition.dx + (targetSize.width / 2) - 12,
+      targetPosition.dy + (targetSize.height / 2) - 12,
+    );
+
+    await animateFlyingIcon(startOffset, endOffset);
+  }
+
+  Future<void> animateProductToCartFromCenter() async {
+    final overlay = Overlay.of(context);
+    final targetRenderBox = _cartButtonKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (overlay == null || targetRenderBox == null) {
+      return;
+    }
+
+    final overlayBox = overlay.context.findRenderObject() as RenderBox?;
+    if (overlayBox == null) {
+      return;
+    }
+
+    final targetPosition = targetRenderBox.localToGlobal(Offset.zero);
+    final targetSize = targetRenderBox.size;
+    final startOffset = Offset(
+      overlayBox.size.width / 2 - 12,
+      overlayBox.size.height / 2 - 40,
+    );
+    final endOffset = Offset(
+      targetPosition.dx + (targetSize.width / 2) - 12,
+      targetPosition.dy + (targetSize.height / 2) - 12,
+    );
+
+    await animateFlyingIcon(startOffset, endOffset);
+  }
+
+  Future<void> animateFlyingIcon(Offset startOffset, Offset endOffset) async {
+    final overlay = Overlay.of(context);
+    if (overlay == null) {
+      return;
+    }
+
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+
+    final curvedAnimation = CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeInOutCubic,
+    );
+
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        return AnimatedBuilder(
+          animation: curvedAnimation,
+          builder: (context, child) {
+            final value = curvedAnimation.value;
+            final dx = startOffset.dx + ((endOffset.dx - startOffset.dx) * value);
+            final dyBase = startOffset.dy + ((endOffset.dy - startOffset.dy) * value);
+            final arcHeight = 60 * (1 - ((value - 0.5) * (value - 0.5) * 4));
+            final scale = 1 - (0.35 * value);
+            final opacity = value > 0.9 ? (1 - value) * 10 : 1.0;
+
+            return Positioned(
+              left: dx,
+              top: dyBase - arcHeight,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: opacity.clamp(0, 1),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.shade100,
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.shopping_bag_rounded,
+                        size: 16,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    overlay.insert(overlayEntry);
+    await controller.forward();
+    overlayEntry.remove();
+    controller.dispose();
   }
 
   // 🧾 CART UI
@@ -399,11 +529,15 @@ class _ShopCashierState extends State<ShopCashier> {
                   // 🔥 STYLE HARUS DI SINI
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade700,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
 
                   // 🔥 CHILD HANYA SEKALI
-                  child: const Text("Checkout"),
+                  child: const Text(
+                    "Checkout",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -415,31 +549,22 @@ class _ShopCashierState extends State<ShopCashier> {
 
   // 🧱 PRODUCT CARD
   Widget productCard(Product product) {
-    return InkWell(
-      onTap: () async {
-        await CartService.addToCart(product);
-        loadCart();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Ditambahkan ke keranjang")),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.red.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.shade50,
-              blurRadius: 6,
-              offset: const Offset(0, 4),
-            )
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.shade50,
+            blurRadius: 6,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
 
             Expanded(
               child: ClipRRect(
@@ -489,13 +614,52 @@ class _ShopCashierState extends State<ShopCashier> {
                     "Stok: ${product.stock}",
                     style: const TextStyle(fontSize: 12),
                   ),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: Builder(
+                      builder: (buttonContext) {
+                        return ElevatedButton.icon(
+                          onPressed: () async {
+                            await Future.wait([
+                              CartService.addToCart(product),
+                              animateProductToCart(buttonContext),
+                            ]);
+                            await loadCart();
+
+                            if (!mounted) {
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("${product.name} masuk ke keranjang")),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                          label: const Text(
+                            "Tambah",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             )
           ],
         ),
-      ),
-    );
+      );
   }
 
   // 🧩 UI
@@ -561,10 +725,18 @@ class _ShopCashierState extends State<ShopCashier> {
 
       // 🛒 FLOATING BUTTON
       floatingActionButton: FloatingActionButton.extended(
+        key: _cartButtonKey,
         onPressed: openCart,
-        label: Text("Cart (${cartItems.length})"),
-        icon: const Icon(Icons.shopping_cart),
+        label: Text(
+          "Cart (${cartItems.length})",
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        icon: const Icon(Icons.shopping_cart, color: Colors.white),
         backgroundColor: Colors.red.shade700,
+        foregroundColor: Colors.white,
       ),
     );
   }
