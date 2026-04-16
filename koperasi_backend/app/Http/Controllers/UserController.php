@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Order;
 
 class UserController extends Controller
 {
@@ -19,6 +20,10 @@ class UserController extends Controller
     public function profile(Request $request)
     {
         $user = $request->user();
+        $annualSpend = Order::where('user_id', $user->id)
+            ->where('status', 'diambil')
+            ->whereYear('created_at', now()->year)
+            ->sum('total_price');
 
         return response()->json([
             "id" => $user->id,
@@ -27,8 +32,28 @@ class UserController extends Controller
             "phone_number" => $user->phone_number,
             "date_of_birth" => $user->date_of_birth,
             "gender" => $user->gender,
+            "role" => $user->role,
             "points" => $user->points,
+            "annual_spend" => $annualSpend,
+            "membership_level" => $this->getMembershipLevel($annualSpend),
         ]);
+    }
+
+    private function getMembershipLevel(int $annualSpend): string
+    {
+        if ($annualSpend >= 5000000) {
+            return 'Platinum';
+        }
+
+        if ($annualSpend >= 3000000) {
+            return 'Gold';
+        }
+
+        if ($annualSpend >= 1000000) {
+            return 'Silver';
+        }
+
+        return 'Bronze';
     }
 
     // UPDATE PROFILE

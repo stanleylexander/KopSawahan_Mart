@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
 import '../../services/cart_service.dart';
-import '../../services/order_service.dart';
 import '../../services/voucher_service.dart';
+import '../../utils/receipt_helper.dart';
+import 'checkout_detail.dart';
 import 'my_vouchers_page.dart';
-import 'qris_member.dart';
 
 class CartPage extends StatefulWidget {
   final bool isWorker;
@@ -25,7 +25,6 @@ class _CartPageState extends State<CartPage> {
   List<Cart> cartItems = [];
   List<dynamic> myVouchers = [];
   bool isLoading = true;
-  String? selectedPaymentMethod;
   int? selectedUserVoucherId;
 
   @override
@@ -150,18 +149,6 @@ class _CartPageState extends State<CartPage> {
     return getSubtotalPrice() - getDiscountAmount();
   }
 
-  String getSelectedPaymentLabel() {
-    if (selectedPaymentMethod == "cash") {
-      return "Bayar di tempat";
-    }
-
-    if (selectedPaymentMethod == "online") {
-      return "QRIS";
-    }
-
-    return "Belum dipilih";
-  }
-
   Future<void> openMyVouchersPage() async {
     final selectedId = await Navigator.push<int?>(
       context,
@@ -177,148 +164,44 @@ class _CartPageState extends State<CartPage> {
     });
   }
 
-  Future<void> openCheckoutSettingSheet() async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 48,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        "Atur Checkout",
-                        style: TextStyle(
-                          color: primaryRed,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      buildVoucherSummary(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          await openMyVouchersPage();
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      buildPaymentMethod(
-                        onChanged: (value) {
-                          setState(() {
-                            selectedPaymentMethod = value;
-                          });
-                          setSheetState(() {
-                            selectedPaymentMethod = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      buildCheckoutBreakdown(),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<void> clearCartAfterCheckout() async {
     await CartService.clearCart();
 
     setState(() {
       cartItems.clear();
-      selectedPaymentMethod = null;
       selectedUserVoucherId = null;
     });
   }
 
-  Future<void> checkoutCash() async {
-    final response = await OrderService.createOrder(
-      paymentMethod: "cash",
-      items: getOrderItems(),
-      totalPrice: getFinalTotalPrice(),
-      status: "pending",
-      userVoucherId: selectedUserVoucherId,
-    );
-
-    if (response == null) {
-      showMessage("Checkout gagal");
-      return;
-    }
-
-    await clearCartAfterCheckout();
-    showMessage("Checkout berhasil");
-    Navigator.pop(context);
-  }
-
-  Future<void> checkoutOnline() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => QrisMember(
-          items: getOrderItems(),
-          originalSubtotal: getOriginalSubtotalPrice(),
-          workerDiscountAmount: getWorkerDiscountAmount(),
-          voucherDiscountAmount: getDiscountAmount(),
-          userVoucherId: selectedUserVoucherId,
-        ),
-      ),
-    );
-
-    if (result == true) {
-      setState(() {
-        cartItems.clear();
-        selectedPaymentMethod = null;
-        selectedUserVoucherId = null;
-      });
-
-      Navigator.pop(context);
-    }
-  }
-
   Future<void> onCheckoutPressed() async {
-    if (selectedPaymentMethod == null) {
-      showMessage("Pilih metode pembayaran terlebih dahulu");
-      return;
-    }
-
     if (cartItems.isEmpty) {
       showMessage("Keranjang kosong");
       return;
     }
 
-    if (selectedPaymentMethod == "cash") {
-      await checkoutCash();
-      return;
-    }
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CheckoutDetailPage(
+          cartItems: cartItems,
+          orderItems: getOrderItems(),
+          isWorker: widget.isWorker,
+          originalSubtotal: getOriginalSubtotalPrice(),
+          workerDiscountAmount: getWorkerDiscountAmount(),
+          voucherDiscountAmount: getDiscountAmount(),
+          finalTotalPrice: getFinalTotalPrice(),
+          userVoucherId: selectedUserVoucherId,
+          selectedVoucher: getSelectedVoucher(),
+        ),
+      ),
+    );
 
-    await checkoutOnline();
+    if (result == true) {
+      await clearCartAfterCheckout();
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   Widget buildEmptyCart() {
@@ -545,7 +428,7 @@ class _CartPageState extends State<CartPage> {
                       ? availableVoucherCount == 0
                           ? "Belum ada voucher yang bisa dipakai"
                           : "Belum ada voucher yang dipilih"
-                      : "${selectedVoucher['voucher']['name']} - Diskon ${selectedVoucher['voucher']['discount_amount']}% maks. Rp ${selectedVoucher['voucher']['max_discount_amount']}",
+                      : "${selectedVoucher['voucher']['name']} - Diskon ${selectedVoucher['voucher']['discount_amount']}% maks. ${ReceiptHelper.formatCurrency(selectedVoucher['voucher']['max_discount_amount'] ?? 0)}",
                   style: TextStyle(color: Colors.grey[700]),
                 ),
               ],
@@ -554,86 +437,6 @@ class _CartPageState extends State<CartPage> {
           TextButton(
             onPressed: availableVoucherCount == 0 ? null : (onPressed ?? openMyVouchersPage),
             child: Text(selectedVoucher == null ? "Pilih" : "Ganti"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildPaymentMethod({ValueChanged<String?>? onChanged}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBFA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Metode Pembayaran",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          RadioListTile<String>(
-            value: "cash",
-            groupValue: selectedPaymentMethod,
-            title: const Text("Bayar di Tempat"),
-            secondary: const Icon(Icons.money, color: Colors.green),
-            onChanged: onChanged ??
-                (value) {
-                  setState(() {
-                    selectedPaymentMethod = value;
-                  });
-                },
-          ),
-          RadioListTile<String>(
-            value: "online",
-            groupValue: selectedPaymentMethod,
-            title: const Text("QRIS"),
-            secondary: const Icon(Icons.qr_code, color: Colors.blue),
-            onChanged: onChanged ??
-                (value) {
-                  setState(() {
-                    selectedPaymentMethod = value;
-                  });
-                },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildCheckoutBreakdown() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBFA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Ringkasan Belanja",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: primaryRed,
-            ),
-          ),
-          const SizedBox(height: 12),
-          buildSummaryRow("Subtotal", "Rp ${getOriginalSubtotalPrice()}"),
-          if (widget.isWorker)
-            buildSummaryRow("Diskon worker", "-Rp ${getWorkerDiscountAmount()}"),
-          buildSummaryRow("Diskon voucher", "-Rp ${getDiscountAmount()}"),
-          const SizedBox(height: 6),
-          buildSummaryRow(
-            "Total bayar",
-            "Rp ${getFinalTotalPrice()}",
-            isTotal: true,
           ),
         ],
       ),
@@ -731,6 +534,8 @@ class _CartPageState extends State<CartPage> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              buildVoucherSummary(),
+                              const SizedBox(height: 10),
                               Row(
                                 children: [
                                   Expanded(
@@ -752,19 +557,11 @@ class _CartPageState extends State<CartPage> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            "Rp ${getFinalTotalPrice()}",
+                                            ReceiptHelper.formatCurrency(getFinalTotalPrice()),
                                             style: TextStyle(
                                               color: primaryRed,
                                               fontSize: 22,
                                               fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            "Metode: ${getSelectedPaymentLabel()}",
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
                                             ),
                                           ),
                                         ],
@@ -785,32 +582,12 @@ class _CartPageState extends State<CartPage> {
                                         ),
                                       ),
                                       child: const Text(
-                                        "Checkout",
+                                        "Lanjut",
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: openCheckoutSettingSheet,
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: primaryRed,
-                                        side: BorderSide(color: Colors.red.shade200),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                      ),
-                                      icon: const Icon(Icons.tune),
-                                      label: const Text("Atur checkout"),
                                     ),
                                   ),
                                 ],

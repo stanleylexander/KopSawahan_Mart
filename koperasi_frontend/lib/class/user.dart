@@ -9,6 +9,8 @@ class User {
   final String gender;
   final String role;
   final int points;
+  final int annualSpend;
+  final String membershipLevel;
 
   User({
     required this.id,
@@ -20,6 +22,8 @@ class User {
     required this.gender,
     required this.role,
     required this.points,
+    required this.annualSpend,
+    required this.membershipLevel,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -33,6 +37,8 @@ class User {
       gender: json['gender'] ?? '',
       role: json['role'] ?? '',
       points: int.tryParse(json['points'].toString()) ?? 0,
+      annualSpend: int.tryParse(json['annual_spend'].toString()) ?? 0,
+      membershipLevel: json['membership_level'] ?? 'Bronze',
     );
   }
 

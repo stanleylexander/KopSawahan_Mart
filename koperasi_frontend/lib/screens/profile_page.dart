@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import 'login.dart';
-import 'receipt/receipt_list_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -84,15 +83,6 @@ class _ProfilePageState extends State<ProfilePage> {
         (route) => false,
       );
     }
-  }
-
-  Future<void> openReceiptPage() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ReceiptListPage(),
-      ),
-    );
   }
 
   @override
@@ -200,27 +190,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           _buildDatePicker(),
                           _buildGenderRadio(),
                         ],
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: OutlinedButton.icon(
-                        onPressed: openReceiptPage,
-                        icon: Icon(Icons.receipt_long, color: primaryRed),
-                        label: Text(
-                          "Lihat Nota Saya",
-                          style: TextStyle(color: primaryRed),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: Size(double.infinity, 50),
-                          side: BorderSide(color: Colors.red.shade200),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
                       ),
                     ),
 

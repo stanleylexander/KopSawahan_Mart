@@ -5,6 +5,8 @@ import '../../services/auth_service.dart';
 import '../../services/cart_service.dart';
 import '../../services/product_service.dart';
 import '../../services/user_service.dart';
+import '../../services/voucher_service.dart';
+import '../../utils/receipt_helper.dart';
 import 'cart_page.dart';
 import 'notification_page.dart';
 import 'product_detail.dart';
@@ -30,6 +32,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   List<Product> products = [];
   List<Product> filteredProducts = [];
   int userPoints = 0;
+  int availableVoucherCount = 0;
+  int annualSpend = 0;
+  String membershipLevel = "Bronze";
   bool isLoading = true;
   bool isWorker = false;
   TextEditingController searchController = TextEditingController();
@@ -66,6 +71,26 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     return isWorker ? "Worker" : "Member";
   }
 
+  void showAllProducts() {
+    searchController.clear();
+    setState(() {
+      filteredProducts = List<Product>.from(products);
+    });
+  }
+
+  Color getLevelColor() {
+    switch (membershipLevel.toLowerCase()) {
+      case "platinum":
+        return const Color(0xFF455A64);
+      case "gold":
+        return const Color(0xFFC69214);
+      case "silver":
+        return const Color(0xFF78909C);
+      default:
+        return const Color(0xFF8D5A3B);
+    }
+  }
+
   Future<void> fetchUserData() async {
     final token = await AuthService.getToken();
     final role = await AuthService.getRole();
@@ -84,6 +109,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     }
 
     final user = await UserService.getProfile(token);
+    final vouchers = await VoucherService.getMyVouchers();
+    final unusedVoucherCount = vouchers.where((item) => item['status'] == 'unused').length;
 
     if (!mounted) {
       return;
@@ -91,6 +118,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
     setState(() {
       userPoints = user?.points ?? 0;
+      annualSpend = user?.annualSpend ?? 0;
+      membershipLevel = user?.membershipLevel ?? "Bronze";
+      availableVoucherCount = unusedVoucherCount;
       isWorker = user?.role == 'worker' || currentIsWorker || widget.isWorkerAccount;
     });
   }
@@ -311,20 +341,20 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   Widget buildWelcomeCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [primaryRed, softRed, const Color(0xFFFF8A65)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.red.shade100,
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -333,18 +363,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  getRoleLabel(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                getRoleLabel(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               if (isWorker) ...[
@@ -366,25 +389,25 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               ],
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           const Text(
             "Belanja kebutuhan koperasi jadi lebih mudah",
             style: TextStyle(
               color: Colors.white,
-              fontSize: 22,
+              fontSize: 17,
               fontWeight: FontWeight.bold,
-              height: 1.25,
+              height: 1.2,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             isWorker
                 ? "Semua produk langsung dapat potongan 10% sebelum voucher dipakai."
                 : "Cari produk favoritmu, kumpulkan poin, lalu tukarkan voucher dengan cepat.",
             style: const TextStyle(
               color: Colors.white70,
-              fontSize: 14,
-              height: 1.45,
+              fontSize: 12,
+              height: 1.35,
             ),
           ),
         ],
@@ -393,74 +416,139 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   }
 
   Widget buildPointCard() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: openVoucherPage,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.white, const Color(0xFFFFEBEE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.shade50,
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.red.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.shade50,
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [primaryRed, softRed],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: const Text(
+              "KOPCLUB",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: buildPointSection(
+                    title: "Points",
+                    value: userPoints.toString(),
+                    subtitle: "Lihat Voucher",
+                    onTap: openVoucherPage,
+                  ),
+                ),
+                buildDivider(),
+                Expanded(
+                  child: buildPointSection(
+                    title: "e-Gift Voucher",
+                    value: availableVoucherCount.toString(),
+                    subtitle: "Voucher Aktif",
+                    onTap: openVoucherPage,
+                  ),
+                ),
+                buildDivider(),
+                Expanded(
+                  child: buildPointSection(
+                    title: "Level Club",
+                    value: membershipLevel,
+                    subtitle: "Belanja 1 Tahun",
+                    valueColor: getLevelColor(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Text(
+              "Akumulasi belanja tahun ini: ${ReceiptHelper.formatCurrency(annualSpend)}",
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildDivider() {
+    return Container(
+      width: 1,
+      height: 62,
+      color: Colors.grey.shade200,
+    );
+  }
+
+  Widget buildPointSection({
+    required String title,
+    required String value,
+    required String subtitle,
+    VoidCallback? onTap,
+    Color? valueColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(Icons.stars, color: primaryRed, size: 26),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Poin Anda",
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14),
-                    ),
-                    Text(
-                      userPoints.toString(),
-                      style: TextStyle(
-                        color: primaryRed,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            Row(
-              children: [
-                Text(
-                  "Lihat voucher",
-                  style: TextStyle(
-                    color: primaryRed,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Icon(Icons.arrow_forward_ios, color: primaryRed, size: 18),
-              ],
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? primaryRed,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -494,18 +582,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.red.shade100),
-            ),
+          TextButton(
+            onPressed: showAllProducts,
             child: Text(
-              "${filteredProducts.length} item",
+              "Lihat semua",
               style: TextStyle(
                 color: primaryRed,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
               ),
             ),
           ),
@@ -705,8 +789,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       child: Column(
         children: [
           buildSearchBar(),
-          buildWelcomeCard(),
           buildPointCard(),
+          buildWelcomeCard(),
           buildSectionHeader(),
           buildProductGrid(),
           const SizedBox(height: 24),
