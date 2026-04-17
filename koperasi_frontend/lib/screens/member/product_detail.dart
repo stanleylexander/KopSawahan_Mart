@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../class/product.dart';
 import '../../config/api.dart';
 import '../../services/cart_service.dart';
+import '../../utils/receipt_helper.dart';
 
 class ProductDetail extends StatelessWidget {
   final Product product;
@@ -21,275 +22,366 @@ class ProductDetail extends StatelessWidget {
     return (product.price * 0.9).floor();
   }
 
+  Future<void> showCenteredMessage(BuildContext context) async {
+    final overlay = Overlay.of(context);
+
+    if (overlay == null) {
+      return;
+    }
+
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (_) {
+        return Material(
+          color: Colors.black.withOpacity(0.28),
+          child: Center(
+            child: Container(
+              width: 250,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.14),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 34,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Masuk ke Keranjang",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.red.shade800,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(overlayEntry);
+    await Future.delayed(const Duration(milliseconds: 1200));
+    overlayEntry.remove();
+  }
+
+  Widget buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F6),
       appBar: AppBar(
-        title: Text(
-          product.name,
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text("Detail Produk"),
         backgroundColor: Colors.red.shade700,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.red.shade700, Colors.red.shade500],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+        foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
-          // IMAGE HERO
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // IMAGE PRODUCT
                   Container(
                     width: double.infinity,
-                    height: 300,
-                    margin: EdgeInsets.all(16),
+                    height: 360,
+                    margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 15,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(28),
+                      ),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(28),
+                      ),
                       child: product.image != null
                           ? Image.network(
                               "${Api.storageUrl}${product.image}",
-                              width: double.infinity,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                child: Column(
+                              errorBuilder: (context, error, stackTrace) {
+                                return Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.image_not_supported, size: 64, color: Colors.grey[400]),
-                                    Text("Gambar tidak tersedia", style: TextStyle(color: Colors.grey[600])),
+                                    Icon(Icons.image_not_supported_outlined,
+                                        size: 68, color: Colors.grey[400]),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      "Gambar tidak tersedia",
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
                                   ],
-                                ),
-                              ),
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(child: CircularProgressIndicator(color: Colors.red.shade700));
+                                );
                               },
                             )
-                          : Icon(Icons.image, size: 80, color: Colors.grey[400]),
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.image_outlined, size: 68, color: Colors.grey[400]),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Belum ada gambar produk",
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
                     ),
                   ),
-
-                  // PRODUCT INFO CARD
                   Container(
-                    margin: EdgeInsets.symmetric(horizontal: 16),
-                    padding: EdgeInsets.all(20),
+                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.red.shade100, width: 1),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.red.shade100),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.red.shade50,
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // NAME
+                        Text(
+                          "Informasi Produk",
+                          style: TextStyle(
+                            color: Colors.red.shade800,
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Text(
                           product.name,
                           style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red.shade800,
+                            color: Colors.grey[900],
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(height: 12),
-
-                        // PRICE & STOCK ROW
+                        const SizedBox(height: 10),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (isWorker)
-                                  Text(
-                                    "Rp ${product.price.toStringAsFixed(0)}",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[500],
-                                      decoration: TextDecoration.lineThrough,
-                                    ),
-                                  ),
-                                Text(
-                                  "Rp ${getDisplayPrice()}",
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    color: Colors.red.shade700,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                if (isWorker)
-                                  Text(
-                                    "Diskon worker 10%",
-                                    style: TextStyle(
-                                      color: Colors.green.shade700,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: product.stock > 0 ? Colors.green.shade100 : Colors.red.shade100,
-                                borderRadius: BorderRadius.circular(20),
+                            if (isWorker)
+                              buildInfoChip(
+                                icon: Icons.workspace_premium_rounded,
+                                label: "Diskon Worker 10%",
+                                color: Colors.orange.shade800,
+                                backgroundColor: Colors.orange.shade50,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                            if (isWorker) const SizedBox(width: 8),
+                            buildInfoChip(
+                              icon: Icons.local_shipping_outlined,
+                              label: "Ambil di koperasi",
+                              color: Colors.red.shade700,
+                              backgroundColor: Colors.red.shade50,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    product.stock > 0 ? Icons.inventory_2 : Icons.inventory,
-                                    size: 18,
-                                    color: product.stock > 0 ? Colors.green.shade700 : Colors.red.shade700,
-                                  ),
-                                  SizedBox(width: 4),
                                   Text(
-                                    "${product.stock}",
+                                    "Harga",
                                     style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (isWorker)
+                                    Text(
+                                      ReceiptHelper.formatCurrency(product.price),
+                                      style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 13,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                  Text(
+                                    ReceiptHelper.formatCurrency(getDisplayPrice()),
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 26,
                                       fontWeight: FontWeight.bold,
-                                      color: product.stock > 0 ? Colors.green.shade700 : Colors.red.shade700,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            buildInfoChip(
+                              icon: product.stock > 0
+                                  ? Icons.inventory_2_rounded
+                                  : Icons.remove_shopping_cart_rounded,
+                              label: product.stock > 0
+                                  ? "Stok ${product.stock}"
+                                  : "Stok Habis",
+                              color: product.stock > 0
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                              backgroundColor: product.stock > 0
+                                  ? Colors.green.shade50
+                                  : Colors.red.shade50,
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // DESCRIPTION CARD
-                  if (product.description.isNotEmpty)
-                    Container(
-                      margin: EdgeInsets.symmetric(horizontal: 16),
-                      padding: EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.red.shade100, width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.shade50,
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
+                        const SizedBox(height: 18),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBFA),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: Colors.red.shade100),
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.description_outlined, color: Colors.red.shade700, size: 24),
-                              SizedBox(width: 12),
                               Text(
                                 "Deskripsi",
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  color: Colors.red.shade700,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red.shade800,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                product.description.isNotEmpty
+                                    ? product.description
+                                    : "Produk ini belum memiliki deskripsi tambahan.",
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  height: 1.6,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 12),
-                          Text(
-                            product.description,
-                            style: TextStyle(
-                              fontSize: 15,
-                              height: 1.6,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-
-                  SizedBox(height: 100),
+                  ),
+                  const SizedBox(height: 120),
                 ],
               ),
             ),
           ),
-
-          // BOTTOM BUTTON ADD TO CART
           Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
             decoration: BoxDecoration(
               color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(0.06),
                   blurRadius: 20,
-                  offset: Offset(0, -5),
+                  offset: const Offset(0, -6),
                 ),
               ],
             ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade700,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    elevation: 6,
+                    shadowColor: Colors.red.shade200,
                   ),
-                  elevation: 6,
-                  shadowColor: Colors.red.shade300,
-                ),
-                onPressed: () async {
-                  await CartService.addToCart(product);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("Ditambahkan ke keranjang!"),
-                        backgroundColor: Colors.green.shade600,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    );
-                  }
-                },
-                icon: Icon(Icons.add_shopping_cart),
-                label: Text(
-                  "Tambah ke Keranjang",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  onPressed: product.stock <= 0
+                      ? null
+                      : () async {
+                          await CartService.addToCart(product);
+                          if (context.mounted) {
+                            await showCenteredMessage(context);
+                          }
+                        },
+                  icon: const Icon(Icons.add_shopping_cart_rounded),
+                  label: const Text(
+                    "Masuk ke Keranjang",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -9,6 +9,7 @@ import '../../services/voucher_service.dart';
 import '../../utils/receipt_helper.dart';
 import 'cart_page.dart';
 import 'notification_page.dart';
+import 'product_page.dart';
 import 'product_detail.dart';
 import 'voucher_page.dart';
 
@@ -71,11 +72,15 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     return isWorker ? "Worker" : "Member";
   }
 
-  void showAllProducts() {
-    searchController.clear();
-    setState(() {
-      filteredProducts = List<Product>.from(products);
-    });
+  Future<void> showAllProducts() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPage(isWorker: isWorker),
+      ),
+    );
+
+    await loadHomeData();
   }
 
   Color getLevelColor() {
