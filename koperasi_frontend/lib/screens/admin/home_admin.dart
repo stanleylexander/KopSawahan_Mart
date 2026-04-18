@@ -15,11 +15,23 @@ class HomeAdmin extends StatefulWidget {
 class _HomeAdminState extends State<HomeAdmin> {
 
   late Future<List<Product>> futureProducts;
+  TextEditingController? _searchController;
+
+  TextEditingController get searchController {
+    _searchController ??= TextEditingController();
+    return _searchController!;
+  }
 
   @override
   void initState() {
     super.initState();
     loadProducts();
+  }
+
+  @override
+  void dispose() {
+    _searchController?.dispose();
+    super.dispose();
   }
 
   void loadProducts() {
@@ -40,7 +52,7 @@ class _HomeAdminState extends State<HomeAdmin> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          "Dashboard Admin",
+          "Daftar Produk",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -63,20 +75,33 @@ class _HomeAdminState extends State<HomeAdmin> {
 
       body: Column(
         children: [
-          const SizedBox(height: 16),
-
-          // 🔥 TITLE SECTION (GANTI TOGGLE)
-          Text(
-            "Daftar Produk",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.red.shade700,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: searchController,
+              onChanged: (_) {
+                setState(() {});
+              },
+              decoration: InputDecoration(
+                hintText: "Cari produk...",
+                prefixIcon: Icon(Icons.search, color: Colors.red.shade700),
+                filled: true,
+                fillColor: Colors.red.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red.shade100),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red.shade100),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                ),
+              ),
             ),
           ),
-
-          const SizedBox(height: 16),
-
           Expanded(
             child: RefreshIndicator(
               color: Colors.red.shade700,
@@ -122,7 +147,11 @@ class _HomeAdminState extends State<HomeAdmin> {
           );
         }
 
-        final products = snapshot.data ?? [];
+        final allProducts = snapshot.data ?? [];
+        final keyword = searchController.text.toLowerCase();
+        final products = allProducts.where((product) {
+          return product.name.toLowerCase().contains(keyword);
+        }).toList();
 
         if (products.isEmpty) {
           return Center(
@@ -159,13 +188,17 @@ class _HomeAdminState extends State<HomeAdmin> {
 
   Widget _buildProductCard(Product product) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
             builder: (_) => DetailProductPage(product: product),
           ),
         );
+
+        if (result == true && mounted) {
+          refreshData();
+        }
       },
       child: Container(
         padding: EdgeInsets.all(16),
@@ -281,9 +314,17 @@ class _HomeAdminState extends State<HomeAdmin> {
               children: [
                 IconButton(
                   icon: Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () {
-                    // TODO: EDIT PRODUCT
-                    print("Edit product ${product.id}");
+                  onPressed: () async {
+                    final result = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DetailProductPage(product: product),
+                      ),
+                    );
+
+                    if (result == true && mounted) {
+                      refreshData();
+                    }
                   },
                 ),
                 IconButton(

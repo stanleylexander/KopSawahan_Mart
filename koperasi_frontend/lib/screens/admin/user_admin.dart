@@ -14,11 +14,23 @@ class UserAdminPage extends StatefulWidget {
 class _UserAdminPageState extends State<UserAdminPage> {
 
   late Future<List<User>> futureUsers;
+  TextEditingController? _searchController;
+
+  TextEditingController get searchController {
+    _searchController ??= TextEditingController();
+    return _searchController!;
+  }
 
   @override
   void initState() {
     super.initState();
     loadUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchController?.dispose();
+    super.dispose();
   }
 
   Future<void> loadUsers() async {
@@ -48,10 +60,43 @@ class _UserAdminPageState extends State<UserAdminPage> {
         backgroundColor: Colors.red.shade700,
         centerTitle: true,
       ),
-      body: RefreshIndicator(
-        color: Colors.red.shade700,
-        onRefresh: refreshData,
-        child: buildUserList(),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: searchController,
+              onChanged: (_) {
+                setState(() {});
+              },
+              decoration: InputDecoration(
+                hintText: "Cari nama user...",
+                prefixIcon: Icon(Icons.search, color: Colors.red.shade700),
+                filled: true,
+                fillColor: Colors.red.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red.shade100),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red.shade100),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              color: Colors.red.shade700,
+              onRefresh: refreshData,
+              child: buildUserList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -77,7 +122,11 @@ class _UserAdminPageState extends State<UserAdminPage> {
           );
         }
 
-        final users = snapshot.data ?? [];
+        final allUsers = snapshot.data ?? [];
+        final keyword = searchController.text.toLowerCase();
+        final users = allUsers.where((user) {
+          return user.name.toLowerCase().contains(keyword);
+        }).toList();
 
         if (users.isEmpty) {
           return Center(
