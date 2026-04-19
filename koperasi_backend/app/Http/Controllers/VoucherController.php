@@ -4,15 +4,25 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Voucher;
 use App\Models\UserVoucher;
 
 class VoucherController extends Controller
 {
+    private function expireUserVouchers(int $userId): void
+    {
+        UserVoucher::where('user_id', $userId)
+            ->where('status', 'unused')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now())
+            ->update(['status' => 'used']);
+    }
+
     // GET ALL VOUCHERS
     public function index()
     {
-        return response()->json(Voucher::all());
+        return response()->json(Voucher::latest()->get());
     }
 
     // CREATE
@@ -24,7 +34,16 @@ class VoucherController extends Controller
             'required_points' => 'required|integer|min:0',
             'discount_amount' => 'required|integer|min:0|max:100',
             'max_discount_amount' => 'required|integer|min:0',
+            'minimum_purchase_amount' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png',
+            'expired_at' => 'nullable|date',
         ]);
+
+        $imagePath = null;
+
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('vouchers', 'public');
+        }
 
         $voucher = Voucher::create([
             'name' => $request->name,
@@ -32,6 +51,9 @@ class VoucherController extends Controller
             'required_points' => $request->required_points,
             'discount_amount' => $request->discount_amount,
             'max_discount_amount' => $request->max_discount_amount,
+            'minimum_purchase_amount' => $request->minimum_purchase_amount,
+            'image' => $imagePath,
+            'expired_at' => $request->expired_at,
         ]);
 
         return response()->json([
@@ -51,7 +73,18 @@ class VoucherController extends Controller
             'required_points' => 'required|integer|min:0',
             'discount_amount' => 'required|integer|min:0|max:100',
             'max_discount_amount' => 'required|integer|min:0',
+            'minimum_purchase_amount' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png',
+            'expired_at' => 'nullable|date',
         ]);
+
+        if ($request->hasFile('image')) {
+            if ($voucher->image) {
+                Storage::disk('public')->delete($voucher->image);
+            }
+
+            $voucher->image = $request->file('image')->store('vouchers', 'public');
+        }
 
         $voucher->update([
             'name' => $request->name,
@@ -59,6 +92,9 @@ class VoucherController extends Controller
             'required_points' => $request->required_points,
             'discount_amount' => $request->discount_amount,
             'max_discount_amount' => $request->max_discount_amount,
+            'minimum_purchase_amount' => $request->minimum_purchase_amount,
+            'image' => $voucher->image,
+            'expired_at' => $request->expired_at,
         ]);
 
         return response()->json([
@@ -72,6 +108,10 @@ class VoucherController extends Controller
     {
         $voucher = Voucher::findOrFail($id);
 
+        if ($voucher->image) {
+            Storage::disk('public')->delete($voucher->image);
+        }
+
         $voucher->delete();
 
         return response()->json([
@@ -84,6 +124,12 @@ class VoucherController extends Controller
     {
         $user = $request->user();
         $voucher = Voucher::findOrFail($id);
+
+        if ($voucher->expired_at && $voucher->expired_at->isPast()) {
+            return response()->json([
+                "message" => "Voucher sudah expired"
+            ], 422);
+        }
 
         if ($user->points < $voucher->required_points) {
             return response()->json([
@@ -102,7 +148,8 @@ class VoucherController extends Controller
             UserVoucher::create([
                 'user_id' => $user->id,
                 'voucher_id' => $voucher->id,
-                'status' => 'unused'
+                'status' => 'unused',
+                'expires_at' => $voucher->expired_at,
             ]);
 
             DB::commit();
@@ -125,6 +172,7 @@ class VoucherController extends Controller
     public function myVouchers(Request $request)
     {
         $user = $request->user();
+        $this->expireUserVouchers($user->id);
 
         return response()->json(
             UserVoucher::with('voucher')

@@ -12,6 +12,13 @@ class Voucher extends Model
         'required_points',
         'discount_amount',
         'max_discount_amount',
+        'minimum_purchase_amount',
+        'image',
+        'expired_at',
+    ];
+
+    protected $casts = [
+        'expired_at' => 'datetime',
     ];
 
     public function users()

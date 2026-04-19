@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../class/voucher.dart';
 import '../../services/voucher_service.dart';
 
@@ -19,6 +21,9 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
   late TextEditingController pointController;
   late TextEditingController discountPercentController;
   late TextEditingController maxDiscountController;
+  late TextEditingController minimumPurchaseController;
+  late TextEditingController expiredAtController;
+  File? imageFile;
 
   bool isLoading = false;
 
@@ -30,6 +35,14 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
     pointController = TextEditingController(text: widget.voucher.requiredPoints.toString());
     discountPercentController = TextEditingController(text: widget.voucher.discountPercent.toString());
     maxDiscountController = TextEditingController(text: widget.voucher.maxDiscountAmount.toString());
+    minimumPurchaseController = TextEditingController(
+      text: widget.voucher.minimumPurchaseAmount.toString(),
+    );
+    expiredAtController = TextEditingController(
+      text: widget.voucher.expiresAt.isEmpty
+          ? ''
+          : widget.voucher.expiresAt.split('T').first,
+    );
   }
 
   @override
@@ -39,7 +52,22 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
     pointController.dispose();
     discountPercentController.dispose();
     maxDiscountController.dispose();
+    minimumPurchaseController.dispose();
+    expiredAtController.dispose();
     super.dispose();
+  }
+
+  Future<void> pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      imageFile = File(picked.path);
+    });
   }
 
   Future<void> update() async {
@@ -52,6 +80,9 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
       requiredPoints: int.tryParse(pointController.text) ?? 0,
       discountPercent: int.tryParse(discountPercentController.text) ?? 0,
       maxDiscountAmount: int.tryParse(maxDiscountController.text) ?? 0,
+      minimumPurchaseAmount: int.tryParse(minimumPurchaseController.text) ?? 0,
+      expiresAt: expiredAtController.text,
+      imageFile: imageFile,
     );
 
     setState(() => isLoading = false);
@@ -66,6 +97,25 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
         const SnackBar(content: Text("Gagal update voucher")),
       );
     }
+  }
+
+  Future<void> pickExpiredDate() async {
+    final initialDate = expiredAtController.text.isEmpty
+        ? DateTime.now().add(const Duration(days: 7))
+        : DateTime.tryParse(expiredAtController.text) ?? DateTime.now().add(const Duration(days: 7));
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (pickedDate == null) {
+      return;
+    }
+
+    expiredAtController.text = pickedDate.toIso8601String().split('T').first;
   }
 
   InputDecoration buildInputDecoration(String label) {
@@ -128,6 +178,45 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  Center(
+                    child: GestureDetector(
+                      onTap: pickImage,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          width: 150,
+                          height: 150,
+                          color: Colors.grey[100],
+                          child: imageFile != null
+                              ? Image.file(imageFile!, fit: BoxFit.cover)
+                              : widget.voucher.image.isNotEmpty
+                                  ? Image.network(
+                                      VoucherService.getImageUrl(widget.voucher.image),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(Icons.image_outlined, size: 38, color: Colors.grey),
+                                        SizedBox(height: 8),
+                                        Text("Upload Gambar"),
+                                      ],
+                                    ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Text(
+                      "Ketuk gambar untuk mengganti foto voucher",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   TextField(
                     controller: nameController,
                     decoration: buildInputDecoration("Nama Voucher"),
@@ -155,6 +244,21 @@ class _VoucherDetailAdminPageState extends State<VoucherDetailAdminPage> {
                     controller: maxDiscountController,
                     keyboardType: TextInputType.number,
                     decoration: buildInputDecoration("Maksimal Diskon (Rp)"),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: minimumPurchaseController,
+                    keyboardType: TextInputType.number,
+                    decoration: buildInputDecoration("Minimal Belanja (Rp)"),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: expiredAtController,
+                    readOnly: true,
+                    onTap: pickExpiredDate,
+                    decoration: buildInputDecoration("Expired Date").copyWith(
+                      suffixIcon: const Icon(Icons.calendar_today_outlined),
+                    ),
                   ),
                 ],
               ),

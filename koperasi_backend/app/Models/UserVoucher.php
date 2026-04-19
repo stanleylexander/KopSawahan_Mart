@@ -10,6 +10,11 @@ class UserVoucher extends Model
         'user_id',
         'voucher_id',
         'status',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
     ];
 
     public function user()

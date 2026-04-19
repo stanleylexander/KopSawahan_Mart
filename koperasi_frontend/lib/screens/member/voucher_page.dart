@@ -11,7 +11,8 @@ class VoucherPage extends StatefulWidget {
 
 class _VoucherPageState extends State<VoucherPage> {
   final Color primaryRed = const Color(0xFFB71C1C);
-  final Color softBackground = const Color(0xFFFFF8F6);
+  final Color softBackground = const Color(0xFFFFF7F8);
+
   List<Voucher> vouchers = [];
   bool isLoading = true;
 
@@ -49,7 +50,7 @@ class _VoucherPageState extends State<VoucherPage> {
         backgroundColor: success ? Colors.green.shade600 : Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );
@@ -59,8 +60,22 @@ class _VoucherPageState extends State<VoucherPage> {
     }
   }
 
+  String formatDate(String value) {
+    if (value.isEmpty) {
+      return "-";
+    }
+
+    final parsed = DateTime.tryParse(value);
+
+    if (parsed == null) {
+      return value;
+    }
+
+    return "${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}";
+  }
+
   Future<void> showVoucherDetail(Voucher voucher) async {
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -96,39 +111,14 @@ class _VoucherPageState extends State<VoucherPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
                   voucher.description.isEmpty
-                      ? "Voucher ini belum memiliki deskripsi tambahan."
+                      ? "Voucher ini belum memiliki detail tambahan."
                       : voucher.description,
                   style: TextStyle(
                     color: Colors.grey[700],
                     height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      redeem(voucher.id);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryRed,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: const Text(
-                      "Tukar Voucher",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
                   ),
                 ),
               ],
@@ -139,117 +129,215 @@ class _VoucherPageState extends State<VoucherPage> {
     );
   }
 
+  Widget buildVoucherImage(Voucher voucher, {BoxFit fit = BoxFit.cover}) {
+    if (voucher.image.isNotEmpty) {
+      return Image.network(
+        VoucherService.getImageUrl(voucher.image),
+        fit: fit,
+        errorBuilder: (_, __, ___) => buildDefaultVoucherImage(voucher),
+      );
+    }
+
+    return buildDefaultVoucherImage(voucher);
+  }
+
+  Widget buildDefaultVoucherImage(Voucher voucher) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.red.shade100,
+            Colors.orange.shade100,
+            Colors.white,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -16,
+            left: -12,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.red.shade200.withOpacity(0.3),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -22,
+            right: -16,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.orange.shade200.withOpacity(0.3),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      voucher.name.isEmpty
+                          ? "V"
+                          : voucher.name.characters.first.toUpperCase(),
+                      style: TextStyle(
+                        color: primaryRed,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 28,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      voucher.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.red.shade900,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildVoucherCard(Voucher voucher) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.red.shade100),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.red.shade50,
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            voucher.name,
-            style: TextStyle(
-              color: primaryRed,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: SizedBox(
+              height: 150,
+              width: double.infinity,
+              child: buildVoucherImage(voucher),
             ),
           ),
-          const SizedBox(height: 12),
-          IntrinsicWidth(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.red.shade50,
-                  const Color(0xFFFFF4E8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.red.shade100),
-            ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.shade100,
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.stars_rounded,
-                      size: 18,
-                      color: Colors.amber.shade700,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    "${voucher.requiredPoints} poin",
-                    style: TextStyle(
-                      color: Colors.red.shade800,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              TextButton(
-                onPressed: () => showVoucherDetail(voucher),
-                child: Text(
-                  "Detail",
-                  style: TextStyle(
-                    color: Colors.red.shade700,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  voucher.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF212121),
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    height: 1.35,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => redeem(voucher.id),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 8),
+                Text(
+                  voucher.expiresAt.isEmpty
+                      ? "Berlaku tanpa batas waktu"
+                      : "Berlaku sampai ${formatDate(voucher.expiresAt)}",
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        "${voucher.requiredPoints} poin",
+                        style: TextStyle(
+                          color: Colors.orange.shade800,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    "Tukar",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => showVoucherDetail(voucher),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryRed,
+                          side: BorderSide(color: Colors.red.shade200),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                        ),
+                        child: const Text(
+                          "Detail",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => redeem(voucher.id),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                        ),
+                        child: const Text(
+                          "Claim",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -309,7 +397,7 @@ class _VoucherPageState extends State<VoucherPage> {
                       ],
                     )
                   : ListView(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(18),
                       children: [
                         ...vouchers.map(buildVoucherCard),
                       ],

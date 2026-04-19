@@ -104,7 +104,24 @@ class OrderController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                if ($userVoucher->expires_at && $userVoucher->expires_at->isPast()) {
+                    $userVoucher->update([
+                        'status' => 'used',
+                    ]);
+
+                    throw new HttpResponseException(response()->json([
+                        'message' => 'Voucher sudah expired',
+                    ], 422));
+                }
+
                 $voucher = $userVoucher->voucher;
+
+                if ($priceAfterWorkerDiscount < $voucher->minimum_purchase_amount) {
+                    throw new HttpResponseException(response()->json([
+                        'message' => 'Minimal belanja untuk voucher ini adalah Rp ' . number_format($voucher->minimum_purchase_amount, 0, ',', '.'),
+                    ], 422));
+                }
+
                 $discountPercent = $voucher->discount_amount;
                 $voucherDiscountAmount = (int) floor($priceAfterWorkerDiscount * $discountPercent / 100);
 

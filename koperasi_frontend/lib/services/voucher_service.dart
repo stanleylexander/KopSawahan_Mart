@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../class/voucher.dart';
 import '../config/api.dart';
@@ -39,21 +40,44 @@ class VoucherService {
     required int requiredPoints,
     required int discountPercent,
     required int maxDiscountAmount,
+    required int minimumPurchaseAmount,
+    required String expiresAt,
+    File? imageFile,
   }) async {
     try {
-      final response = await http.post(
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest(
+        'POST',
         Uri.parse("${Api.baseUrl}/vouchers"),
-        headers: await _getHeaders(withJson: true),
-        body: jsonEncode({
-          "name": name,
-          "description": description,
-          "required_points": requiredPoints,
-          "discount_amount": discountPercent,
-          "max_discount_amount": maxDiscountAmount,
-        }),
       );
 
-      return response.statusCode == 201;
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      });
+
+      request.fields.addAll({
+        "name": name,
+        "description": description,
+        "required_points": requiredPoints.toString(),
+        "discount_amount": discountPercent.toString(),
+        "max_discount_amount": maxDiscountAmount.toString(),
+        "minimum_purchase_amount": minimumPurchaseAmount.toString(),
+      });
+
+      if (expiresAt.isNotEmpty) {
+        request.fields["expired_at"] = expiresAt;
+      }
+
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('image', imageFile.path),
+        );
+      }
+
+      final response = await request.send();
+
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }
@@ -66,24 +90,55 @@ class VoucherService {
     required int requiredPoints,
     required int discountPercent,
     required int maxDiscountAmount,
+    required int minimumPurchaseAmount,
+    required String expiresAt,
+    File? imageFile,
   }) async {
     try {
-      final response = await http.post(
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest(
+        'POST',
         Uri.parse("${Api.baseUrl}/vouchers/$id"),
-        headers: await _getHeaders(withJson: true),
-        body: jsonEncode({
-          "name": name,
-          "description": description,
-          "required_points": requiredPoints,
-          "discount_amount": discountPercent,
-          "max_discount_amount": maxDiscountAmount,
-        }),
       );
 
-      return response.statusCode == 200;
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      });
+
+      request.fields.addAll({
+        "name": name,
+        "description": description,
+        "required_points": requiredPoints.toString(),
+        "discount_amount": discountPercent.toString(),
+        "max_discount_amount": maxDiscountAmount.toString(),
+        "minimum_purchase_amount": minimumPurchaseAmount.toString(),
+      });
+
+      if (expiresAt.isNotEmpty) {
+        request.fields["expired_at"] = expiresAt;
+      }
+
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('image', imageFile.path),
+        );
+      }
+
+      final response = await request.send();
+
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }
+  }
+
+  static String getImageUrl(String? image) {
+    if (image == null || image.isEmpty) {
+      return "";
+    }
+
+    return "${Api.storageUrl}$image";
   }
 
   static Future<bool> deleteVoucher(int id) async {
