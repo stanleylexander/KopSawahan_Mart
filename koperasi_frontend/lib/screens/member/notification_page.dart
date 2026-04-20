@@ -376,50 +376,19 @@ class _NotificationPageState extends State<NotificationPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Order #${receipt['order_id'] ?? '-'}",
-                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
                     ReceiptHelper.formatDateTime(receipt['created_at']),
                     style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Kasir: ${receipt['cashier_name'] ?? '-'} - ${(receipt['payment_method'] ?? '-').toString().toUpperCase()}",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  ReceiptHelper.formatCurrency(receipt['total_price'] ?? 0),
-                  style: TextStyle(
-                    color: primaryRed,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    receipt['receipt_type'] == 'digital' ? "Digital" : "Print",
-                    style: TextStyle(
-                      color: primaryRed,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              ReceiptHelper.formatCurrency(receipt['total_price'] ?? 0),
+              style: TextStyle(
+                color: primaryRed,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
             ),
           ],
         ),

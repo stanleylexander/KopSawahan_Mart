@@ -167,7 +167,7 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
     final overlay = Overlay.of(context);
     final targetRenderBox = _cartButtonKey.currentContext?.findRenderObject() as RenderBox?;
 
-    if (overlay == null || targetRenderBox == null) {
+    if (targetRenderBox == null) {
       return;
     }
 
@@ -192,9 +192,6 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
 
   Future<void> animateFlyingIcon(Offset startOffset, Offset endOffset) async {
     final overlay = Overlay.of(context);
-    if (overlay == null) {
-      return;
-    }
 
     final controller = AnimationController(
       vsync: this,

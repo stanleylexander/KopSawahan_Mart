@@ -56,7 +56,6 @@ class PrinterService {
       return false;
     }
 
-    // 🔥 FIX 1: DISCONNECT DULU (WAJIB)
     try {
       await PrintBluetoothThermal.disconnect;
       print("Disconnected old connection");
@@ -64,17 +63,14 @@ class PrinterService {
       print("No previous connection");
     }
 
-    // 🔥 FIX 2: DELAY BIAR STABIL
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // 🔥 CONNECT
     bool isConnected = await PrintBluetoothThermal.connect(
       macPrinterAddress: address,
     );
 
     print("Connected: $isConnected");
 
-    // 🔥 FIX 3: RETRY kalau gagal
     if (!isConnected) {
       print("Retry connect...");
       await Future.delayed(const Duration(seconds: 1));
@@ -91,22 +87,18 @@ class PrinterService {
       }
     }
 
-    // 🔥 BUILD RECEIPT
     final bytes = await buildReceiptBytes(receipt);
     print("Bytes length: ${bytes.length}");
 
-    // 🔥 PRINT
     final result = await PrintBluetoothThermal.writeBytes(bytes);
     print("Print result: $result");
 
-    // 🔥 SAVE PRINTER
     if (result && macAddress != null && printerName != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(savedPrinterMacKey, macAddress);
       await prefs.setString(savedPrinterNameKey, printerName);
     }
 
-    // 🔥 FIX 4: DISCONNECT SETELAH PRINT
     await Future.delayed(const Duration(milliseconds: 300));
     await PrintBluetoothThermal.disconnect;
 

@@ -175,7 +175,24 @@ class VoucherService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+
+        if (data is! List) {
+          return [];
+        }
+
+        return data.whereType<Map>().map((item) {
+          final normalized = Map<String, dynamic>.from(item);
+          final voucher = normalized['voucher'];
+
+          if (voucher is Map) {
+            normalized['voucher'] = Map<String, dynamic>.from(voucher);
+          } else {
+            normalized['voucher'] = <String, dynamic>{};
+          }
+
+          return normalized;
+        }).toList();
       }
 
       return [];

@@ -6,9 +6,10 @@ import '../../services/cart_service.dart';
 import '../../services/product_service.dart';
 import '../../services/user_service.dart';
 import '../../services/voucher_service.dart';
-import '../../utils/receipt_helper.dart';
 import 'cart_page.dart';
+import 'my_vouchers_page.dart';
 import 'notification_page.dart';
+import 'my_level_page.dart';
 import 'product_page.dart';
 import 'product_detail.dart';
 import 'voucher_page.dart';
@@ -32,13 +33,24 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   final GlobalKey _cartButtonKey = GlobalKey();
   List<Product> products = [];
   List<Product> filteredProducts = [];
-  int userPoints = 0;
-  int availableVoucherCount = 0;
-  int annualSpend = 0;
-  String membershipLevel = "Bronze";
+  int? _userPoints = 0;
+  int? _availableVoucherCount = 0;
+  int? _annualSpend = 0;
+  String? _membershipLevel = "Bronze";
   bool isLoading = true;
   bool isWorker = false;
   TextEditingController searchController = TextEditingController();
+
+  int get userPointsValue => _userPoints ?? 0;
+  int get availableVoucherCountValue => _availableVoucherCount ?? 0;
+  int get annualSpendValue => _annualSpend ?? 0;
+  String get membershipLevelValue {
+    final value = _membershipLevel;
+    if (value == null || value.isEmpty || value == 'undefined' || value == 'null') {
+      return "Bronze";
+    }
+    return value;
+  }
 
   @override
   void initState() {
@@ -84,7 +96,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   }
 
   Color getLevelColor() {
-    switch (membershipLevel.toLowerCase()) {
+    switch (membershipLevelValue.toLowerCase()) {
       case "platinum":
         return const Color(0xFF455A64);
       case "gold":
@@ -107,7 +119,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       }
 
       setState(() {
-        userPoints = 0;
+        _userPoints = 0;
         isWorker = currentIsWorker || widget.isWorkerAccount;
       });
       return;
@@ -115,17 +127,17 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
     final user = await UserService.getProfile(token);
     final vouchers = await VoucherService.getMyVouchers();
-    final unusedVoucherCount = vouchers.where((item) => item['status'] == 'unused').length;
-
     if (!mounted) {
       return;
     }
 
     setState(() {
-      userPoints = user?.points ?? 0;
-      annualSpend = user?.annualSpend ?? 0;
-      membershipLevel = user?.membershipLevel ?? "Bronze";
-      availableVoucherCount = unusedVoucherCount;
+      _userPoints = user?.points ?? 0;
+      _availableVoucherCount = vouchers.where((item) {
+        return item is Map && item['status'] == 'unused' && item['voucher'] is Map;
+      }).length;
+      _annualSpend = user?.annualSpend ?? 0;
+      _membershipLevel = user?.membershipLevel ?? "Bronze";
       isWorker = user?.role == 'worker' || currentIsWorker || widget.isWorkerAccount;
     });
   }
@@ -165,6 +177,32 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
 
     await loadHomeData();
+  }
+
+  Future<void> openMyVouchersPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MyVouchersPage(
+          selectedUserVoucherId: null,
+          allowSelection: false,
+        ),
+      ),
+    );
+
+    await loadHomeData();
+  }
+
+  Future<void> openMyLevelPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyLevelPage(
+          annualSpend: annualSpendValue,
+          membershipLevel: membershipLevelValue,
+        ),
+      ),
+    );
   }
 
   Future<void> openCartPage() async {
@@ -449,7 +487,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             ),
             child: const Text(
-              "KOPCLUB",
+              "KOPBENEFIT",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -465,41 +503,31 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 Expanded(
                   child: buildPointSection(
                     title: "Points",
-                    value: userPoints.toString(),
-                    subtitle: "Lihat Voucher",
+                    value: userPointsValue.toString(),
+                    subtitle: "Tukar voucher >",
                     onTap: openVoucherPage,
                   ),
                 ),
                 buildDivider(),
                 Expanded(
                   child: buildPointSection(
-                    title: "e-Gift Voucher",
-                    value: availableVoucherCount.toString(),
-                    subtitle: "Voucher Aktif",
-                    onTap: openVoucherPage,
+                    title: "Voucher",
+                    value: availableVoucherCountValue.toString(),
+                    subtitle: "Voucher saya >",
+                    onTap: openMyVouchersPage,
                   ),
                 ),
                 buildDivider(),
                 Expanded(
                   child: buildPointSection(
-                    title: "Level Club",
-                    value: membershipLevel,
-                    subtitle: "Belanja 1 Tahun",
+                    title: "Level",
+                    value: membershipLevelValue,
+                    subtitle: "Lihat level >",
                     valueColor: getLevelColor(),
+                    onTap: openMyLevelPage,
                   ),
                 ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: Text(
-              "Akumulasi belanja tahun ini: ${ReceiptHelper.formatCurrency(annualSpend)}",
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ),
         ],
@@ -527,10 +555,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               title,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey[700],
                 fontSize: 13,
@@ -540,6 +569,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             const SizedBox(height: 6),
             Text(
               value,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: valueColor ?? primaryRed,
                 fontSize: 22,
@@ -549,6 +579,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             const SizedBox(height: 4),
             Text(
               subtitle,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Order;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -32,6 +33,7 @@ class UserController extends Controller
             "phone_number" => $user->phone_number,
             "date_of_birth" => $user->date_of_birth,
             "gender" => $user->gender,
+            "image" => $user->image,
             "role" => $user->role,
             "points" => $user->points,
             "annual_spend" => $annualSpend,
@@ -67,7 +69,16 @@ class UserController extends Controller
             'phone_number' => 'nullable|string|max:20',
             'date_of_birth' => 'nullable|date',
             'gender' => 'nullable|in:male,female',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png',
         ]);
+
+        if ($request->hasFile('image')) {
+            if ($user->image) {
+                Storage::disk('public')->delete($user->image);
+            }
+
+            $user->image = $request->file('image')->store('profiles', 'public');
+        }
 
         $user->name = $request->name;
         $user->email = $request->email;

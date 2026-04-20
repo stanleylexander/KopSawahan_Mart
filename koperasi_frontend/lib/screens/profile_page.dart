@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
@@ -15,14 +17,50 @@ class _ProfilePageState extends State<ProfilePage> {
   final Color primaryRed = const Color(0xFFB71C1C);
   final Color creamBackground = const Color(0xFFFFF8F6);
 
-  late TextEditingController nameController;
-  late TextEditingController emailController;
-  late TextEditingController phoneController;
+  TextEditingController? _nameController;
+  TextEditingController? _emailController;
+  TextEditingController? _phoneController;
 
   bool isLoading = true;
-
   DateTime? selectedDate;
-  String selectedGender = "male";
+  String? _selectedGender = "male";
+  String? _profileImage = '';
+  File? imageFile;
+
+  TextEditingController get nameController {
+    _nameController ??= TextEditingController();
+    return _nameController!;
+  }
+
+  TextEditingController get emailController {
+    _emailController ??= TextEditingController();
+    return _emailController!;
+  }
+
+  TextEditingController get phoneController {
+    _phoneController ??= TextEditingController();
+    return _phoneController!;
+  }
+
+  String get selectedGenderValue {
+    final value = _selectedGender;
+
+    if (value == null || value.isEmpty || value == 'undefined' || value == 'null') {
+      return "male";
+    }
+
+    return value;
+  }
+
+  String get profileImageValue {
+    final value = _profileImage;
+
+    if (value == null || value.isEmpty || value == 'undefined' || value == 'null') {
+      return '';
+    }
+
+    return value;
+  }
 
   @override
   void initState() {
@@ -32,18 +70,29 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    String token = prefs.getString('token') ?? '';
-
+    final token = prefs.getString('token') ?? '';
     final user = await UserService.getProfile(token);
 
     if (user != null) {
-      nameController = TextEditingController(text: user.name);
-      emailController = TextEditingController(text: user.email);
-      phoneController = TextEditingController(text: user.phoneNumber);
+      nameController.text = user.name;
+      emailController.text = user.email;
+      phoneController.text = user.phoneNumber;
+      _profileImage = user.image;
+
       if (user.dateOfBirth.isNotEmpty) {
         selectedDate = DateTime.tryParse(user.dateOfBirth);
       }
-      selectedGender = user.gender.toLowerCase();
+
+      _selectedGender = user.gender.toLowerCase().isEmpty ? "male" : user.gender.toLowerCase();
+    } else {
+      nameController.text = '';
+      emailController.text = '';
+      phoneController.text = '';
+      _profileImage = '';
+    }
+
+    if (!mounted) {
+      return;
     }
 
     setState(() {
@@ -51,18 +100,48 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  @override
+  void dispose() {
+    _nameController?.dispose();
+    _emailController?.dispose();
+    _phoneController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      imageFile = File(picked.path);
+    });
+  }
+
   Future<void> handleUpdateProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    String token = prefs.getString('token') ?? '';
+    final token = prefs.getString('token') ?? '';
 
-    bool success = await UserService.updateProfile(
+    final success = await UserService.updateProfile(
       token,
       nameController.text,
       emailController.text,
       phoneController.text,
-      selectedDate != null ? "${selectedDate!.toLocal()}".split(' ')[0]: "",
-      selectedGender,
+      selectedDate != null ? "${selectedDate!.toLocal()}".split(' ')[0] : "",
+      selectedGenderValue,
+      imageFile,
     );
+
+    if (success) {
+      await loadProfile();
+    }
+
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -85,11 +164,81 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Widget buildProfileAvatar() {
+    Widget child;
+    final hasRemoteImage = profileImageValue.isNotEmpty;
+
+    if (imageFile != null) {
+      child = Image.file(imageFile!, fit: BoxFit.cover);
+    } else if (hasRemoteImage) {
+      child = Image.network(
+        UserService.getImageUrl(profileImageValue),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Center(
+          child: Icon(
+            Icons.person,
+            size: 50,
+            color: primaryRed,
+          ),
+        ),
+      );
+    } else {
+      child = Center(
+        child: Icon(
+          Icons.person,
+          size: 50,
+          color: primaryRed,
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: pickImage,
+      child: Stack(
+        children: [
+          Container(
+            width: 94,
+            height: 94,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+            ),
+            child: ClipOval(child: child),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.shade100,
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.camera_alt_rounded,
+                color: primaryRed,
+                size: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: creamBackground,
-
       appBar: AppBar(
         title: const Text("Profile"),
         backgroundColor: primaryRed,
@@ -106,71 +255,58 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
-
       body: isLoading
-          ? Center(
-              child: CircularProgressIndicator(color: Colors.red),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.red))
           : RefreshIndicator(
               onRefresh: loadProfile,
               child: SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
-
-                    // 🔥 HEADER
                     Container(
                       width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 30),
+                      padding: const EdgeInsets.symmetric(vertical: 30),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            primaryRed,
-                            Colors.red.shade500
-                          ],
+                          colors: [primaryRed, Colors.red.shade500],
                         ),
-                        borderRadius: BorderRadius.only(
+                        borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(30),
                           bottomRight: Radius.circular(30),
                         ),
                       ),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 45,
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 50,
-                              color: primaryRed,
-                            ),
-                          ),
-                          SizedBox(height: 12),
-
+                          buildProfileAvatar(),
+                          const SizedBox(height: 12),
                           Text(
                             nameController.text,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-
-                          SizedBox(height: 4),
-
+                          const SizedBox(height: 4),
                           Text(
                             emailController.text,
-                            style: TextStyle(color: Colors.white70),
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Ketuk foto untuk mengganti gambar profil",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     ),
-
-                    SizedBox(height: 24),
-
+                    const SizedBox(height: 24),
                     Container(
-                      margin: EdgeInsets.symmetric(horizontal: 16),
-                      padding: EdgeInsets.all(20),
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -192,46 +328,41 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                     ),
-
-                    SizedBox(height: 12),
-
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: ElevatedButton.icon(
                         onPressed: handleUpdateProfile,
-                        icon: Icon(Icons.save),
-                        label: Text("Simpan Perubahan"),
+                        icon: const Icon(Icons.save),
+                        label: const Text("Simpan Perubahan"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-                          minimumSize: Size(double.infinity, 50),
+                          minimumSize: const Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                       ),
                     ),
-
-                    SizedBox(height: 12),
-
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: ElevatedButton.icon(
                         onPressed: handleLogout,
-                        icon: Icon(Icons.logout),
-                        label: Text("Logout"),
+                        icon: const Icon(Icons.logout),
+                        label: const Text("Logout"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryRed,
                           foregroundColor: Colors.white,
-                          minimumSize: Size(double.infinity, 50),
+                          minimumSize: const Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                       ),
                     ),
-
-                    SizedBox(height: 30),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
@@ -245,11 +376,8 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          SizedBox(height: 6),
+          Text(label, style: TextStyle(color: Colors.grey[600])),
+          const SizedBox(height: 6),
           TextField(
             controller: controller,
             decoration: InputDecoration(
@@ -273,17 +401,14 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("Tanggal Lahir", style: TextStyle(color: Colors.grey[600])),
-          SizedBox(height: 6),
-
+          const SizedBox(height: 6),
           GestureDetector(
             onTap: () async {
-              DateTime now = DateTime.now();
-
               final pickedDate = await showDatePicker(
                 context: context,
                 initialDate: selectedDate ?? DateTime(2000),
                 firstDate: DateTime(1950),
-                lastDate: now,
+                lastDate: DateTime.now(),
               );
 
               if (pickedDate != null) {
@@ -294,7 +419,7 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             child: Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
@@ -304,9 +429,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ? "${selectedDate!.toLocal()}".split(' ')[0]
                     : "Pilih tanggal lahir",
                 style: TextStyle(
-                  color: selectedDate != null
-                      ? Colors.black
-                      : Colors.grey,
+                  color: selectedDate != null ? Colors.black : Colors.grey,
                 ),
               ),
             ),
@@ -323,35 +446,39 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("Gender", style: TextStyle(color: Colors.grey[600])),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedGenderValue,
+                isExpanded: true,
+                borderRadius: BorderRadius.circular(12),
+                items: const [
+                  DropdownMenuItem(
+                    value: "male",
+                    child: Text("Male"),
+                  ),
+                  DropdownMenuItem(
+                    value: "female",
+                    child: Text("Female"),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
 
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<String>(
-                  value: "male",
-                  groupValue: selectedGender,
-                  title: Text("Male"),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedGender = value!;
-                    });
-                  },
-                ),
+                  setState(() {
+                    _selectedGender = value;
+                  });
+                },
               ),
-              Expanded(
-                child: RadioListTile<String>(
-                  value: "female",
-                  groupValue: selectedGender,
-                  title: Text("Female"),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedGender = value!;
-                    });
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

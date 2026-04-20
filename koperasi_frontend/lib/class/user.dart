@@ -7,6 +7,7 @@ class User {
   final String phoneNumber;
   final String dateOfBirth;
   final String gender;
+  final String image;
   final String role;
   final int points;
   final int annualSpend;
@@ -20,6 +21,7 @@ class User {
     required this.phoneNumber,
     required this.dateOfBirth,
     required this.gender,
+    required this.image,
     required this.role,
     required this.points,
     required this.annualSpend,
@@ -27,18 +29,48 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    String parseString(dynamic value, {String fallback = ''}) {
+      if (value == null) {
+        return fallback;
+      }
+
+      final text = '$value';
+      if (text == 'null' || text == 'undefined') {
+        return fallback;
+      }
+
+      return text;
+    }
+
+    int parseInt(dynamic value) {
+      if (value == null) {
+        return 0;
+      }
+
+      if (value is int) {
+        return value;
+      }
+
+      if (value is double) {
+        return value.toInt();
+      }
+
+      return int.tryParse('$value') ?? 0;
+    }
+
     return User(
       id: json['id'],
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      password: json['password'] ?? '',
-      phoneNumber: json['phone_number'] ?? '',
-      dateOfBirth: json['date_of_birth'] ?? '',
-      gender: json['gender'] ?? '',
-      role: json['role'] ?? '',
-      points: int.tryParse(json['points'].toString()) ?? 0,
-      annualSpend: int.tryParse(json['annual_spend'].toString()) ?? 0,
-      membershipLevel: json['membership_level'] ?? 'Bronze',
+      name: parseString(json['name']),
+      email: parseString(json['email']),
+      password: parseString(json['password']),
+      phoneNumber: parseString(json['phone_number']),
+      dateOfBirth: parseString(json['date_of_birth']),
+      gender: parseString(json['gender']),
+      image: parseString(json['image']),
+      role: parseString(json['role']),
+      points: parseInt(json['points']),
+      annualSpend: parseInt(json['annual_spend']),
+      membershipLevel: parseString(json['membership_level'], fallback: 'Bronze'),
     );
   }
 

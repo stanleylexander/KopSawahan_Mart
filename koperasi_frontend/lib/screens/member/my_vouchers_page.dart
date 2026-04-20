@@ -3,10 +3,12 @@ import '../../services/voucher_service.dart';
 
 class MyVouchersPage extends StatefulWidget {
   final int? selectedUserVoucherId;
+  final bool allowSelection;
 
   const MyVouchersPage({
     super.key,
     required this.selectedUserVoucherId,
+    this.allowSelection = true,
   });
 
   @override
@@ -34,13 +36,20 @@ class _MyVouchersPageState extends State<MyVouchersPage> {
     }
 
     setState(() {
-      vouchers = data.where((item) => item['status'] == 'unused').toList();
+      vouchers = data.where((item) {
+        if (item is! Map) {
+          return false;
+        }
+
+        final voucher = item['voucher'];
+        return item['status'] == 'unused' && voucher is Map;
+      }).toList();
       isLoading = false;
     });
   }
 
   String formatRupiah(dynamic amount) {
-    final value = int.tryParse(amount.toString()) ?? 0;
+    final value = int.tryParse(amount?.toString() ?? '0') ?? 0;
     return "Rp ${value.toString().replaceAllMapped(
           RegExp(r'\B(?=(\d{3})+(?!\d))'),
           (match) => '.',
@@ -63,6 +72,24 @@ class _MyVouchersPageState extends State<MyVouchersPage> {
     return "${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}";
   }
 
+  Map<String, dynamic> getVoucherMap(dynamic item) {
+    if (item is! Map) {
+      return {};
+    }
+
+    final voucher = item['voucher'];
+
+    if (voucher is Map<String, dynamic>) {
+      return voucher;
+    }
+
+    if (voucher is Map) {
+      return Map<String, dynamic>.from(voucher);
+    }
+
+    return {};
+  }
+
   Widget buildVoucherImage(Map<String, dynamic> voucher) {
     final image = voucher['image']?.toString() ?? '';
 
@@ -78,7 +105,9 @@ class _MyVouchersPageState extends State<MyVouchersPage> {
   }
 
   Widget buildDefaultVoucherImage(Map<String, dynamic> voucher) {
-    final name = voucher['name']?.toString() ?? 'Voucher';
+    final name = (voucher['name']?.toString().isNotEmpty ?? false)
+        ? voucher['name'].toString()
+        : 'Voucher';
 
     return Container(
       decoration: BoxDecoration(
@@ -102,7 +131,7 @@ class _MyVouchersPageState extends State<MyVouchersPage> {
           ),
           child: Center(
             child: Text(
-              name.characters.first.toUpperCase(),
+              name.substring(0, 1).toUpperCase(),
               style: TextStyle(
                 color: primaryRed,
                 fontWeight: FontWeight.bold,
@@ -135,15 +164,17 @@ class _MyVouchersPageState extends State<MyVouchersPage> {
   }
 
   Widget buildVoucherCard(dynamic item) {
-    final voucher = item['voucher'] as Map<String, dynamic>;
-    final isSelected = selectedUserVoucherId == item['id'];
+    final voucher = getVoucherMap(item);
+    final isSelected = widget.allowSelection && selectedUserVoucherId == item['id'];
 
     return InkWell(
-      onTap: () {
-        setState(() {
-          selectedUserVoucherId = item['id'];
-        });
-      },
+      onTap: !widget.allowSelection
+          ? null
+          : () {
+              setState(() {
+                selectedUserVoucherId = item['id'];
+              });
+            },
       borderRadius: BorderRadius.circular(22),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -238,47 +269,51 @@ class _MyVouchersPageState extends State<MyVouchersPage> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context, null);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: primaryRed,
-                        side: BorderSide(color: Colors.red.shade200),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    if (widget.allowSelection) ...[
+                      OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context, null);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryRed,
+                          side: BorderSide(color: Colors.red.shade200),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Tanpa Voucher",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      child: const Text(
-                        "Tanpa Voucher",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
+                    ],
                     ...vouchers.map(buildVoucherCard),
                   ],
                 ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context, selectedUserVoucherId);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primaryRed,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: const Text(
-            "Gunakan Voucher",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
+      bottomNavigationBar: widget.allowSelection
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, selectedUserVoucherId);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryRed,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  "Gunakan Voucher",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

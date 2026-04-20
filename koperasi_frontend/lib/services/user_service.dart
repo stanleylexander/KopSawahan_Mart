@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:koperasi_frontend/class/user.dart';
 import '../config/api.dart';
@@ -63,37 +64,54 @@ class UserService {
     String phone,
     String dateOfBirth,
     String gender,
+    File? imageFile,
   ) async {
     try {
-      final response = await http.post(
+      final request = http.MultipartRequest(
+        'POST',
         Uri.parse("${Api.baseUrl}/profile"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "name": name,
-          "email": email,
-          "phone_number": phone,
-          "date_of_birth": dateOfBirth,
-          "gender": gender,
-        }),
       );
 
-      print("STATUS updateProfile: ${response.statusCode}");
-      print("BODY updateProfile: ${response.body}");
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      });
+
+      request.fields.addAll({
+        "name": name,
+        "email": email,
+        "phone_number": phone,
+        "gender": gender,
+      });
+
+      if (dateOfBirth.isNotEmpty) {
+        request.fields["date_of_birth"] = dateOfBirth;
+      }
+
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('image', imageFile.path),
+        );
+      }
+
+      final response = await request.send();
 
       if (response.statusCode == 200) {
         return true;
       } else {
-        print("ERROR updateProfile: ${response.body}");
         return false;
       }
     } catch (e) {
-      print("EXCEPTION updateProfile: $e");
       return false;
     }
+  }
+
+  static String getImageUrl(String? image) {
+    if (image == null || image.isEmpty) {
+      return "";
+    }
+
+    return "${Api.storageUrl}$image";
   }
 
 

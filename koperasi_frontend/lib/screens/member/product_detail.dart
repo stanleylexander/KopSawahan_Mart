@@ -25,10 +25,6 @@ class ProductDetail extends StatelessWidget {
   Future<void> showCenteredMessage(BuildContext context) async {
     final overlay = Overlay.of(context);
 
-    if (overlay == null) {
-      return;
-    }
-
     late OverlayEntry overlayEntry;
 
     overlayEntry = OverlayEntry(
