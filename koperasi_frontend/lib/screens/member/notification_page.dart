@@ -271,7 +271,7 @@ class _NotificationPageState extends State<NotificationPage> {
           const SizedBox(width: 12),
           buildTabButton(
             value: 'receipt',
-            label: 'Nota',
+            label: 'Riwayat Transaksi',
           ),
         ],
       ),

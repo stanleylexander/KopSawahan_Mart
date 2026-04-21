@@ -74,7 +74,7 @@ Route::middleware(['auth:sanctum', 'role:cashier'])->group(function () {
     // ORDER
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders/{id}/complete', [OrderController::class, 'complete']);
-    Route::post('/orders/{id}/taken', [OrderController::class, 'markAsTaken']);
+    Route::post('/orders/{id}/notify', [OrderController::class, 'notifyCustomer']);
     Route::post('/receipts/{id}/printed', [ReceiptController::class, 'markAsPrinted']);
 
 });

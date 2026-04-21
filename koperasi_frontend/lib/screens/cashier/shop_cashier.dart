@@ -262,9 +262,10 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
 
   // 🧾 CART UI
   Widget buildCartSheet() {
+    String? cashErrorText;
+
     return StatefulBuilder(
       builder: (context, setModalState) {
-
         double total = 0;
         for (var item in cartItems) {
           total += item.price * item.quantity;
@@ -386,10 +387,19 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
                     TextField(
                       controller: amountPaidController,
                       keyboardType: TextInputType.number,
+                      onChanged: (_) {
+                        if (cashErrorText != null) {
+                          setModalState(() {
+                            cashErrorText = null;
+                          });
+                        }
+                      },
                       decoration: const InputDecoration(
                         labelText: "Uang yang diberikan customer",
-                        border: OutlineInputBorder(),
                         prefixText: "Rp ",
+                      ).copyWith(
+                        border: const OutlineInputBorder(),
+                        errorText: cashErrorText,
                       ),
                     ),
                   ],
@@ -422,11 +432,9 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
 
                     if (selectedPaymentMethod == "cash" &&
                         amountPaidController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Masukkan uang yang diberikan customer"),
-                        ),
-                      );
+                      setModalState(() {
+                        cashErrorText = "Masukkan uang yang diberikan customer";
+                      });
                       return;
                     }
 
@@ -446,9 +454,16 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
                       final amountPaid = int.tryParse(amountPaidController.text.trim());
 
                       if (amountPaid == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Nominal uang tidak valid")),
-                        );
+                        setModalState(() {
+                          cashErrorText = "Nominal uang tidak valid";
+                        });
+                        return;
+                      }
+
+                      if (amountPaid < total.toInt()) {
+                        setModalState(() {
+                          cashErrorText = "Salah memasukkan nominal pembayaran";
+                        });
                         return;
                       }
 

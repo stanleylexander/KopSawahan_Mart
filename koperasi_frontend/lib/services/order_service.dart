@@ -58,10 +58,13 @@ class OrderService {
     return [];
   }
 
-  static Future<Map<String, dynamic>?> completeOrder(int orderId) async {
+  static Future<Map<String, dynamic>?> completeOrder(int orderId, {int? amountPaid}) async {
     final response = await http.post(
       Uri.parse("${Api.baseUrl}/orders/$orderId/complete"),
-      headers: await _getHeaders(),
+      headers: await _getHeaders(withJson: true),
+      body: jsonEncode({
+        if (amountPaid != null) "amount_paid": amountPaid,
+      }),
     );
 
     if (response.statusCode == 200) {
@@ -71,9 +74,9 @@ class OrderService {
     return null;
   }
 
-  static Future<bool> markOrderAsTaken(int orderId) async {
+  static Future<bool> notifyOrder(int orderId) async {
     final response = await http.post(
-      Uri.parse("${Api.baseUrl}/orders/$orderId/taken"),
+      Uri.parse("${Api.baseUrl}/orders/$orderId/notify"),
       headers: await _getHeaders(),
     );
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/order_service.dart';
-import '../receipt/receipt_detail_page.dart';
+import '../../utils/receipt_helper.dart';
 import '../drawer/drawer_cashier.dart';
+import '../receipt/receipt_detail_page.dart';
 
 class HomeCashier extends StatefulWidget {
   const HomeCashier({super.key});
@@ -11,9 +12,9 @@ class HomeCashier extends StatefulWidget {
 }
 
 class _HomeCashierState extends State<HomeCashier> {
+  final Color primaryRed = const Color(0xFFB71C1C);
   List orders = [];
   bool isLoading = true;
-  String selectedTab = 'pending';
   final TextEditingController searchController = TextEditingController();
   final Set<int> expandedOrderIds = {};
 
@@ -21,6 +22,12 @@ class _HomeCashierState extends State<HomeCashier> {
   void initState() {
     super.initState();
     loadOrders();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   void showMessage(String message) {
@@ -35,21 +42,29 @@ class _HomeCashierState extends State<HomeCashier> {
     try {
       final data = await OrderService.getOrders();
 
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         orders = data;
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
       setState(() => isLoading = false);
       showMessage("Gagal load data");
     }
   }
 
-  Future<void> completeOrder(int orderId) async {
-    final response = await OrderService.completeOrder(orderId);
+  Future<void> handleCompleteOrder(int orderId, {int? amountPaid}) async {
+    final response = await OrderService.completeOrder(orderId, amountPaid: amountPaid);
 
     if (response != null) {
-      showMessage("Pesanan selesai dikemas");
+      showMessage("Pesanan selesai");
 
       final receipt = response["receipt"];
 
@@ -74,22 +89,186 @@ class _HomeCashierState extends State<HomeCashier> {
     }
   }
 
-  Future<void> markOrderAsTaken(int orderId) async {
-    final success = await OrderService.markOrderAsTaken(orderId);
+  Future<void> sendOrderNotification(int orderId) async {
+    final success = await OrderService.notifyOrder(orderId);
 
-    if (success) {
-      showMessage("Pesanan sudah diambil");
-      await loadOrders();
-    } else {
-      showMessage("Gagal update status");
+    showMessage(
+      success ? "Notifikasi berhasil dikirim" : "Gagal mengirim notifikasi",
+    );
+  }
+
+  Future<void> confirmCompleteOrder(dynamic order, {int? amountPaid}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Konfirmasi"),
+        content: Text(
+          order['payment_method'] == 'cash'
+              ? "Pastikan pembayaran customer sudah diterima. Lanjutkan selesaikan pesanan?"
+              : "Apakah kamu yakin ingin menyelesaikan pesanan ini?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Lanjut"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await handleCompleteOrder(order['id'], amountPaid: amountPaid);
     }
+  }
+
+  Future<void> openCashPaymentSheet(dynamic order) async {
+    final amountController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        String? errorText;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 56,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    "Pembayaran Cash",
+                    style: TextStyle(
+                      color: primaryRed,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Total bayar: ${ReceiptHelper.formatCurrency(order['total_price'] ?? 0)}",
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setModalState(() {
+                          errorText = null;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Nominal pembayaran",
+                      prefixText: "Rp ",
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      errorText: errorText,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final amountPaid = int.tryParse(amountController.text) ?? 0;
+                        final totalPrice = order['total_price'] ?? 0;
+
+                        if (amountPaid <= 0) {
+                          setModalState(() {
+                            errorText = "Masukkan nominal pembayaran";
+                          });
+                          return;
+                        }
+
+                        if (amountPaid < totalPrice) {
+                          setModalState(() {
+                            errorText = "Salah memasukkan nominal pembayaran";
+                          });
+                          return;
+                        }
+
+                        Navigator.pop(context);
+                        await confirmCompleteOrder(order, amountPaid: amountPaid);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        "Selesai",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+          },
+        );
+      },
+    );
+
+    amountController.dispose();
   }
 
   List getFilteredOrders() {
     final keyword = searchController.text.toLowerCase();
+    final sortedOrders = List.of(orders)
+      ..sort((a, b) {
+        final aPending = a['status'] == 'pending' ? 0 : 1;
+        final bPending = b['status'] == 'pending' ? 0 : 1;
+        return aPending.compareTo(bPending);
+      });
 
-    return orders.where((order) {
-      if (order['status'] != selectedTab) {
+    return sortedOrders.where((order) {
+      if (order['status'] != 'pending') {
         return false;
       }
 
@@ -101,7 +280,7 @@ class _HomeCashierState extends State<HomeCashier> {
           .toString()
           .toLowerCase();
       final orderId = order['id'].toString().toLowerCase();
-      final productNames = (order['items'] as List)
+      final productNames = (order['items'] as List? ?? [])
           .map((item) {
             return (item['product_name'] ?? item['product']?['name'] ?? '')
                 .toString()
@@ -115,48 +294,12 @@ class _HomeCashierState extends State<HomeCashier> {
     }).toList();
   }
 
-  Widget buildTabButton({
-    required String value,
-    required String label,
-  }) {
-    final isActive = selectedTab == value;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            selectedTab = value;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? Colors.red.shade700 : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red.shade200),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.red.shade700,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: TextField(
         controller: searchController,
-        onChanged: (_) {
-          setState(() {});
-        },
+        onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
           hintText: "Cari order, nama member, atau produk...",
           prefixIcon: Icon(Icons.search, color: Colors.red.shade700),
@@ -179,50 +322,72 @@ class _HomeCashierState extends State<HomeCashier> {
     );
   }
 
-  Widget buildTabs() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          buildTabButton(
-            value: 'pending',
-            label: 'Order Diterima',
-          ),
-          const SizedBox(width: 12),
-          buildTabButton(
-            value: 'selesai',
-            label: 'Sudah Diambil',
-          ),
-        ],
+  Widget buildStatusChip(String status) {
+    final isPending = status == 'pending';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isPending ? Colors.orange.shade50 : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        isPending ? "Pending" : "Selesai",
+        style: TextStyle(
+          color: isPending ? Colors.orange.shade700 : Colors.green.shade700,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
       ),
     );
   }
 
-  Widget buildActionButton(dynamic order) {
-    if (order['status'] == 'pending') {
-      return ElevatedButton(
-        onPressed: () => completeOrder(order['id']),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const Text("Selesai"),
-      );
+  Widget buildActionButtons(dynamic order) {
+    if (order['status'] != 'pending') {
+      return buildStatusChip('selesai');
     }
 
-    return ElevatedButton(
-      onPressed: () => markOrderAsTaken(order['id']),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    final isCashPayment = order['payment_method'] == 'cash';
+    final hasUser = order['user_id'] != null;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
+      children: [
+        if (hasUser)
+          OutlinedButton.icon(
+            onPressed: () => sendOrderNotification(order['id']),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: primaryRed,
+              side: BorderSide(color: Colors.red.shade200),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.notifications_active_outlined, size: 18),
+            label: const Text(
+              "Notifikasi",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ElevatedButton(
+          onPressed: isCashPayment
+              ? () => openCashPaymentSheet(order)
+              : () => confirmCompleteOrder(order),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isCashPayment ? Colors.green : Colors.orange,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Text(
+            isCashPayment ? "Bayar" : "Selesai",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
-      ),
-      child: const Text("Sudah Diambil"),
+      ],
     );
   }
 
@@ -294,6 +459,8 @@ class _HomeCashierState extends State<HomeCashier> {
   }
 
   Widget buildOrderCard(dynamic order) {
+    final status = order['status'] ?? 'pending';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -305,12 +472,19 @@ class _HomeCashierState extends State<HomeCashier> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "${order['user']?['name'] ?? order['customer_name'] ?? 'Pelanggan'}",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    "${order['user']?['name'] ?? order['customer_name'] ?? 'Pelanggan'}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                buildStatusChip(status),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
@@ -322,29 +496,23 @@ class _HomeCashierState extends State<HomeCashier> {
               "Metode: ${order['payment_method']}",
               style: const TextStyle(color: Colors.grey),
             ),
-            const SizedBox(height: 4),
-            Text(
-              "Status: ${order['status']}",
-              style: TextStyle(
-                color: order['status'] == 'pending' ? Colors.orange : Colors.green,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
             const SizedBox(height: 10),
             buildProductDetails(order),
             const SizedBox(height: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  "Rp ${order['total_price']}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                    fontSize: 16,
+                Expanded(
+                  child: Text(
+                    ReceiptHelper.formatCurrency(order['total_price'] ?? 0),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
-                buildActionButton(order),
+                buildActionButtons(order),
               ],
             ),
           ],
@@ -390,8 +558,6 @@ class _HomeCashierState extends State<HomeCashier> {
       body: Column(
         children: [
           buildSearchBar(),
-          buildTabs(),
-          const SizedBox(height: 12),
           Expanded(
             child: buildOrderList(),
           ),

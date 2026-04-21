@@ -209,6 +209,28 @@ class OrderController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($id);
 
+            if ($order->status === 'selesai') {
+                return [
+                    'order' => $order->fresh(['items.product', 'receipt']),
+                    'receipt' => $order->receipt,
+                ];
+            }
+
+            $amountPaid = null;
+            $changeAmount = 0;
+
+            if ($order->payment_method === 'cash' && $order->order_source === 'app') {
+                $amountPaid = (int) $request->input('amount_paid', 0);
+
+                if ($amountPaid < $order->total_price) {
+                    throw new HttpResponseException(response()->json([
+                        'message' => 'Uang yang diberikan customer kurang',
+                    ], 422));
+                }
+
+                $changeAmount = $amountPaid - $order->total_price;
+            }
+
             $order->update([
                 'status' => 'selesai',
             ]);
@@ -223,6 +245,23 @@ class OrderController extends Controller
                 ]);
             }
 
+            if ($order->user_id) {
+                $user = User::lockForUpdate()->findOrFail($order->user_id);
+                $earnedPoints = intdiv($order->total_price, 100);
+
+                if ($earnedPoints > 0) {
+                    $user->increment('points', $earnedPoints);
+
+                    Notification::create([
+                        'user_id' => $order->user_id,
+                        'order_id' => $order->id,
+                        'title' => 'Poin bertambah',
+                        'message' => "Kamu mendapat {$earnedPoints} poin dari pesanan ini.",
+                        'type' => 'point',
+                    ]);
+                }
+            }
+
             $receipt = $order->receipt;
 
             if ($order->payment_method === 'cash' && $order->order_source === 'app') {
@@ -230,7 +269,9 @@ class OrderController extends Controller
                     $order->fresh(['items.product', 'user', 'userVoucher.voucher']),
                     'digital',
                     'not_needed',
-                    $request->user()->name
+                    $request->user()->name,
+                    $amountPaid,
+                    $changeAmount
                 );
             } elseif ($receipt) {
                 $receipt->update([
@@ -252,37 +293,26 @@ class OrderController extends Controller
         ]);
     }
 
-    public function markAsTaken($id)
+    public function notifyCustomer($id)
     {
-        DB::transaction(function () use ($id) {
-            $order = Order::lockForUpdate()->findOrFail($id);
+        $order = Order::findOrFail($id);
 
-            $order->update([
-                'status' => 'diambil',
-            ]);
+        if (!$order->user_id) {
+            return response()->json([
+                'message' => 'Order offline tidak memiliki user untuk dikirimi notifikasi',
+            ], 422);
+        }
 
-            if (!$order->user_id) {
-                return;
-            }
-
-            $user = User::lockForUpdate()->findOrFail($order->user_id);
-            $earnedPoints = intdiv($order->total_price, 100);
-
-            if ($earnedPoints > 0) {
-                $user->increment('points', $earnedPoints);
-
-                Notification::create([
-                    'user_id' => $order->user_id,
-                    'order_id' => $order->id,
-                    'title' => 'Poin bertambah',
-                    'message' => "Kamu mendapat {$earnedPoints} poin dari pesanan yang sudah diambil.",
-                    'type' => 'point',
-                ]);
-            }
-        });
+        Notification::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'title' => 'Pesanan siap diambil',
+            'message' => 'Pesanan kamu sudah siap diambil di koperasi.',
+            'type' => 'pickup',
+        ]);
 
         return response()->json([
-            'message' => 'Pesanan sudah diambil',
+            'message' => 'Notifikasi berhasil dikirim',
         ]);
     }
 
