@@ -94,6 +94,21 @@ class UserController extends Controller
         ]);
     }
 
+    public function saveDeviceToken(Request $request)
+    {
+        $request->validate([
+            'device_token' => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+        $user->device_token = $request->device_token;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Device token berhasil disimpan',
+        ]);
+    }
+
 
     // UPDATE ROLE
     public function updateRole(Request $request, $id)

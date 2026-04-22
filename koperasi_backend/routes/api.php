@@ -27,6 +27,7 @@ Route::get('/products/{id}', [ProductController::class,'detail']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [UserController::class, 'profile']);
     Route::post('/profile', [UserController::class, 'updateProfile']);
+    Route::post('/device-token', [UserController::class, 'saveDeviceToken']);
 });
 
 

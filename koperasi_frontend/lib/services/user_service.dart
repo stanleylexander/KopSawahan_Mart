@@ -114,6 +114,27 @@ class UserService {
     return "${Api.storageUrl}$image";
   }
 
+  static Future<bool> saveDeviceToken(String token, String? deviceToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/device-token"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "device_token": deviceToken,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error saveDeviceToken: $e");
+      return false;
+    }
+  }
+
 
   // UPDATE ROLE
   static Future<bool> updateUserRole(int userId, String role, String token) async {

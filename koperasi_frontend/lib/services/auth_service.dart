@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api.dart';
+import 'push_notification_service.dart';
 
 class AuthService {
 
@@ -81,6 +82,7 @@ class AuthService {
         await prefs.setString("token", token);
         await prefs.setString("role", role);
         await prefs.setInt("userId", userId);
+        await PushNotificationService.syncDeviceTokenWithServer(apiToken: token);
 
         return true;
 
@@ -115,6 +117,7 @@ class AuthService {
     String token = prefs.getString('token') ?? '';
 
     try {
+      await PushNotificationService.clearDeviceTokenFromServer(apiToken: token);
       await http.post(
         Uri.parse("${Api.baseUrl}/logout"),
         headers: {

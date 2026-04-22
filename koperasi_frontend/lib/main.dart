@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'screens/login.dart';
+import 'services/push_notification_service.dart';
 
-void main() {
-  runApp(MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PushNotificationService.initialize();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

@@ -9,12 +9,17 @@ use App\Models\Product;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Models\UserVoucher;
+use App\Services\FcmService;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    public function __construct(private FcmService $fcmService)
+    {
+    }
+
     public function index()
     {
         $orders = Order::with(['user', 'items.product', 'receipt'])
@@ -168,6 +173,21 @@ class OrderController extends Controller
                     'message' => 'Pesanan kamu sudah masuk dan sedang diproses.',
                     'type' => 'checkout',
                 ]);
+
+                $cashiers = User::where('role', User::ROLE_CASHIER)
+                    ->whereNotNull('device_token')
+                    ->get();
+
+                $this->fcmService->sendToMany(
+                    $cashiers,
+                    'Order baru masuk',
+                    'Ada pesanan baru dari ' . $customer->name . '.',
+                    [
+                        'type' => 'new_order',
+                        'order_id' => (string) $order->id,
+                        'payment_method' => $order->payment_method,
+                    ]
+                );
             }
 
             $receipt = null;
@@ -310,6 +330,18 @@ class OrderController extends Controller
             'message' => 'Pesanan kamu sudah siap diambil di koperasi.',
             'type' => 'pickup',
         ]);
+
+        $order->loadMissing('user');
+
+        $this->fcmService->sendToToken(
+            $order->user?->device_token,
+            'Pesanan siap diambil',
+            'Pesanan kamu sudah siap diambil di koperasi.',
+            [
+                'type' => 'pickup',
+                'order_id' => (string) $order->id,
+            ]
+        );
 
         return response()->json([
             'message' => 'Notifikasi berhasil dikirim',
