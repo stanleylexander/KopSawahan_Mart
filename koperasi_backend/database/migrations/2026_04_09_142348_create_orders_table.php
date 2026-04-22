@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->enum('payment_method', ['cash', 'online']);
-            $table->enum('status', ['pending', 'diproses', 'selesai', 'diambil'])->default('pending');
+            $table->enum('status', ['pending', 'selesai'])->default('pending');
             $table->integer('total_price')->default(0);
             $table->timestamps();
         });

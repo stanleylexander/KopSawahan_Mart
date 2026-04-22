@@ -22,7 +22,7 @@ class UserController extends Controller
     {
         $user = $request->user();
         $annualSpend = Order::where('user_id', $user->id)
-            ->where('status', 'diambil')
+            ->where('status', 'selesai')
             ->whereYear('created_at', now()->year)
             ->sum('total_price');
 

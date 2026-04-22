@@ -38,7 +38,7 @@ class _QrisCashierState extends State<QrisCashier> {
       paymentMethod: "online",
       items: widget.items,
       totalPrice: widget.totalPrice,
-      status: "diambil",
+      status: "selesai",
       orderSource: "offline",
     );
 

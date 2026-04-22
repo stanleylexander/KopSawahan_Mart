@@ -471,7 +471,7 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
                         paymentMethod: "cash",
                         items: items,
                         totalPrice: total.toInt(),
-                        status: "diambil",
+                        status: "selesai",
                         orderSource: "offline",
                         amountPaid: amountPaid,
                       );
