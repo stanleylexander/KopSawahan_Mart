@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../class/cart.dart';
 import '../../config/api.dart';
 import '../../services/cart_service.dart';
+import '../../services/product_service.dart';
 import '../../services/voucher_service.dart';
 import '../../utils/receipt_helper.dart';
 import 'checkout_detail.dart';
@@ -45,7 +46,26 @@ class _CartPageState extends State<CartPage> {
     });
 
     final cartData = await CartService.getCart();
+    final products = await ProductService.getProducts();
     final voucherData = await VoucherService.getMyVouchers();
+
+    final productMap = {
+      for (final product in products) product.id: product,
+    };
+
+    for (final item in cartData) {
+      final latestProduct = productMap[item.id];
+      if (latestProduct != null) {
+        item.stock = latestProduct.stock;
+        if (item.quantity > latestProduct.stock) {
+          item.quantity = latestProduct.stock;
+        }
+      }
+    }
+
+    cartData.removeWhere((item) => item.quantity <= 0 || item.stock <= 0);
+
+    await CartService.saveCart(cartData);
 
     setState(() {
       cartItems = cartData;
@@ -56,6 +76,24 @@ class _CartPageState extends State<CartPage> {
 
   Future<void> loadCart() async {
     final data = await CartService.getCart();
+    final products = await ProductService.getProducts();
+    final productMap = {
+      for (final product in products) product.id: product,
+    };
+
+    for (final item in data) {
+      final latestProduct = productMap[item.id];
+      if (latestProduct != null) {
+        item.stock = latestProduct.stock;
+        if (item.quantity > latestProduct.stock) {
+          item.quantity = latestProduct.stock;
+        }
+      }
+    }
+
+    data.removeWhere((item) => item.quantity <= 0 || item.stock <= 0);
+
+    await CartService.saveCart(data);
 
     setState(() {
       cartItems = data;
@@ -337,6 +375,15 @@ class _CartPageState extends State<CartPage> {
                     ),
                   ),
                 const SizedBox(height: 8),
+                Text(
+                  "Stok tersedia: ${item.stock}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: item.stock > 0 ? Colors.grey[600] : Colors.red.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Container(
@@ -377,7 +424,15 @@ class _CartPageState extends State<CartPage> {
                       child: IconButton(
                         icon: Icon(Icons.add, color: Colors.red.shade700, size: 20),
                         onPressed: () async {
-                          await CartService.increaseQuantity(item.id);
+                          final increased = await CartService.increaseQuantity(
+                            item.id,
+                            maxStock: item.stock,
+                          );
+
+                          if (!increased && mounted) {
+                            showMessage("Jumlah barang sudah mencapai stok");
+                          }
+
                           await loadCart();
                         },
                       ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
+import 'drawer/navbar.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -14,18 +16,47 @@ class _RegisterState extends State<Register> {
   final passwordController = TextEditingController();
   final phoneController = TextEditingController();
   final birthController = TextEditingController();
+  final otpController = TextEditingController();
 
   String gender = "Male";
   bool isLoading = false;
+  bool isOtpStep = false;
   DateTime? selectedDate;
 
-  // Helper untuk format tanggal
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  bool _validateRegisterForm() {
+    if (nameController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
+        passwordController.text.trim().isEmpty ||
+        phoneController.text.trim().isEmpty ||
+        birthController.text.trim().isEmpty) {
+      _showMessage("Semua data register wajib diisi");
+      return false;
+    }
+
+    if (!emailController.text.trim().contains("@")) {
+      _showMessage("Format email belum benar");
+      return false;
+    }
+
+    if (passwordController.text.trim().length < 6) {
+      _showMessage("Password minimal 6 karakter");
+      return false;
+    }
+
+    return true;
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
-  // Pilih tanggal
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -41,10 +72,14 @@ class _RegisterState extends State<Register> {
     }
   }
 
-  void register() async {
+  Future<void> requestOtp() async {
+    if (!_validateRegisterForm()) {
+      return;
+    }
+
     setState(() => isLoading = true);
 
-    bool success = await AuthService.register(
+    final result = await AuthService.requestRegisterOtp(
       nameController.text.trim(),
       emailController.text.trim(),
       passwordController.text.trim(),
@@ -53,18 +88,82 @@ class _RegisterState extends State<Register> {
       gender,
     );
 
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isLoading = false;
+      if (result["success"] == true) {
+        isOtpStep = true;
+      }
+    });
+
+    _showMessage(result["message"]);
+  }
+
+  Future<void> verifyOtp() async {
+    if (otpController.text.trim().length != 6) {
+      _showMessage("Masukkan 6 digit kode OTP");
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    final result = await AuthService.verifyRegisterOtp(
+      emailController.text.trim(),
+      otpController.text.trim(),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
     setState(() => isLoading = false);
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Register berhasil")),
-      );
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Register gagal")),
+    _showMessage(result["message"]);
+
+    if (result["success"] == true) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const Navbar()),
+        (route) => false,
       );
     }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    phoneController.dispose();
+    birthController.dispose();
+    otpController.dispose();
+    super.dispose();
+  }
+
+  InputDecoration buildInputDecoration({
+    required String label,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.red.shade700),
+      suffixIcon: suffixIcon,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
+      ),
+    );
   }
 
   @override
@@ -72,16 +171,16 @@ class _RegisterState extends State<Register> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "Register Koperasi",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: Colors.red,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
       ),
       body: Center(
@@ -103,169 +202,141 @@ class _RegisterState extends State<Register> {
                     radius: 40,
                     backgroundColor: Colors.red.shade700,
                     child: Icon(
-                      Icons.person_add,
+                      isOtpStep ? Icons.mark_email_read : Icons.person_add,
                       size: 52,
                       color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Daftar Akun Baru",
+                    isOtpStep ? "Verifikasi OTP" : "Daftar Akun Baru",
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.red.shade800,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isOtpStep
+                        ? "Masukkan 6 digit kode OTP yang dikirim ke email kamu"
+                        : "Isi data dulu, lalu kami kirim kode OTP ke email",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
                   const SizedBox(height: 30),
-
-                  // Nama
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: "Nama Lengkap",
-                      prefixIcon: Icon(Icons.person_outline, color: Colors.red.shade700),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
+                  if (!isOtpStep) ...[
+                    TextField(
+                      controller: nameController,
+                      decoration: buildInputDecoration(
+                        label: "Nama Lengkap",
+                        icon: Icons.person_outline,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Email
-                  TextField(
-                    controller: emailController,
-                    decoration: InputDecoration(
-                      labelText: "Email",
-                      prefixIcon: Icon(Icons.email_outlined, color: Colors.red.shade700),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: emailController,
+                      decoration: buildInputDecoration(
+                        label: "Email",
+                        icon: Icons.email_outlined,
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: buildInputDecoration(
+                        label: "Password",
+                        icon: Icons.lock_outline,
                       ),
                     ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: "Password",
-                      prefixIcon: Icon(Icons.lock_outline, color: Colors.red.shade700),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      decoration: buildInputDecoration(
+                        label: "Nomor HP",
+                        icon: Icons.phone_outlined,
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(12),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: birthController,
+                      readOnly: true,
+                      decoration: buildInputDecoration(
+                        label: "Tanggal Lahir (YYYY-MM-DD)",
+                        icon: Icons.calendar_today_outlined,
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.date_range, color: Colors.red.shade700),
+                          onPressed: _selectDate,
+                        ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
+                      onTap: _selectDate,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: gender,
+                      decoration: buildInputDecoration(
+                        label: "Gender",
+                        icon: Icons.wc_outlined,
+                      ),
+                      items: ["Male", "Female"].map((g) {
+                        return DropdownMenuItem(
+                          value: g,
+                          child: Text(g),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          gender = value.toString();
+                        });
+                      },
+                    ),
+                  ] else ...[
+                    TextField(
+                      controller: emailController,
+                      readOnly: true,
+                      decoration: buildInputDecoration(
+                        label: "Email",
+                        icon: Icons.email_outlined,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Nomor HP
-                  TextField(
-                    controller: phoneController,
-                    decoration: InputDecoration(
-                      labelText: "Nomor HP",
-                      prefixIcon: Icon(Icons.phone_outlined, color: Colors.red.shade700),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: otpController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6),
+                      ],
+                      decoration: buildInputDecoration(
+                        label: "Kode OTP",
+                        icon: Icons.verified_user_outlined,
+                      ).copyWith(
+                        helperText: "Kode berlaku selama 10 menit",
                       ),
                     ),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Tanggal Lahir dengan DatePicker
-                  TextField(
-                    controller: birthController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: "Tanggal Lahir (YYYY-MM-DD)",
-                      prefixIcon: Icon(Icons.calendar_today_outlined, color: Colors.red.shade700),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.date_range, color: Colors.red.shade700),
-                        onPressed: _selectDate,
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: isLoading ? null : requestOtp,
+                        child: Text(
+                          "Kirim ulang OTP",
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
                       ),
                     ),
-                    onTap: _selectDate,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Gender Dropdown
-                  DropdownButtonFormField<String>(
-                    initialValue: gender,
-                    decoration: InputDecoration(
-                      labelText: "Gender",
-                      prefixIcon: Icon(Icons.wc_outlined, color: Colors.red.shade700),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red.shade200, width: 1.5),
-                      ),
-                    ),
-                    items: ["Male", "Female"].map((g) {
-                      return DropdownMenuItem(
-                        value: g,
-                        child: Text(g),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        gender = value.toString();
-                      });
-                    },
-                  ),
+                  ],
                   const SizedBox(height: 24),
-
-                  // Button
                   isLoading
                       ? const CircularProgressIndicator()
                       : SizedBox(
@@ -280,10 +351,13 @@ class _RegisterState extends State<Register> {
                               ),
                               elevation: 4,
                             ),
-                            onPressed: register,
-                            child: const Text(
-                              "Register",
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            onPressed: isOtpStep ? verifyOtp : requestOtp,
+                            child: Text(
+                              isOtpStep ? "Verifikasi OTP" : "Kirim OTP",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),

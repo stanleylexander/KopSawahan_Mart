@@ -4,6 +4,7 @@ class Cart {
   final String name;
   final int price;
   final String? image;
+  int stock;
   int quantity;
 
   Cart({
@@ -11,6 +12,7 @@ class Cart {
     required this.name,
     required this.price,
     this.image,
+    required this.stock,
     required this.quantity,
   });
 
@@ -20,6 +22,7 @@ class Cart {
       "name":name,
       "price":price,
       "image":image,
+      "stock":stock,
       "quantity":quantity
     };
   }
@@ -30,6 +33,7 @@ class Cart {
       name: json["name"],
       price: (json["price"] as num).toInt(),
       image: json["image"],
+      stock: (json["stock"] as num?)?.toInt() ?? 0,
       quantity: json["quantity"],
     );
   }

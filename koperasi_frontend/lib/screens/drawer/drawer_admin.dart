@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../admin/home_admin.dart';
+import '../admin/report_admin.dart';
 import '../admin/user_admin.dart';
 import '../admin/voucher_admin.dart';
 import '../profile_page.dart';
@@ -84,6 +85,17 @@ class AdminDrawer extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => VoucherAdminPage()),
+              );
+            },
+          ),
+
+          buildMenuItem(
+            icon: Icons.bar_chart,
+            title: "Laporan",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportAdminPage()),
               );
             },
           ),

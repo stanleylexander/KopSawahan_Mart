@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/push_notification_service.dart';
 import '../member/home.dart';
 import '../member/notification_page.dart';
 import '../profile_page.dart';
@@ -22,6 +23,7 @@ class _NavbarState extends State<Navbar> {
   @override
   void initState() {
     super.initState();
+    PushNotificationService.syncDeviceTokenWithServer();
     _pages = [
       Home(isWorkerAccount: widget.isWorkerAccount),
       const NotificationPage(),

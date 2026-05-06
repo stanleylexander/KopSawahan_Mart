@@ -365,7 +365,37 @@ class ProductDetail extends StatelessWidget {
                   onPressed: product.stock <= 0
                       ? null
                       : () async {
-                          await CartService.addToCart(product);
+                          final currentQuantity =
+                              await CartService.getProductQuantity(product.id);
+
+                          if (currentQuantity >= product.stock) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Jumlah produk di keranjang sudah mencapai stok",
+                                  ),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          final added = await CartService.addToCart(product);
+
+                          if (!added) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Produk tidak bisa ditambahkan lagi",
+                                  ),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
                           if (context.mounted) {
                             await showCenteredMessage(context);
                           }

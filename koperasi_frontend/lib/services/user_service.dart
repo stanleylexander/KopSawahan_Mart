@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:koperasi_frontend/class/user.dart';
 import '../config/api.dart';
@@ -130,7 +131,7 @@ class UserService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print("Error saveDeviceToken: $e");
+      debugPrint("Error saveDeviceToken: $e");
       return false;
     }
   }

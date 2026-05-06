@@ -57,6 +57,8 @@ class PushNotificationService {
     FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
       await syncDeviceTokenWithServer(token: token);
     });
+
+    await syncDeviceTokenWithServer();
   }
 
   static Future<void> _initializeLocalNotifications() async {
@@ -108,7 +110,7 @@ class PushNotificationService {
     String? apiToken,
     String? token,
   }) async {
-    final currentToken = token ?? await getCurrentToken();
+    final currentToken = token ?? await _getTokenWithRetry();
 
     if (currentToken == null || currentToken.isEmpty) {
       return;
@@ -136,6 +138,20 @@ class PushNotificationService {
   static Future<String?> _getApiTokenFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
+  }
+
+  static Future<String?> _getTokenWithRetry() async {
+    for (int attempt = 0; attempt < 3; attempt++) {
+      final token = await getCurrentToken();
+
+      if (token != null && token.isNotEmpty) {
+        return token;
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+    }
+
+    return null;
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {

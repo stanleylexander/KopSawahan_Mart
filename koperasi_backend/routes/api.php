@@ -8,12 +8,14 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\ReportController;
 
 use Illuminate\Http\Request;
 
 
 // AUTH CONTROLLER
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register/request-otp', [AuthController::class, 'requestRegisterOtp']);
+Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
@@ -65,6 +67,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::post('/vouchers', [VoucherController::class, 'store']);
     Route::post('/vouchers/{id}', [VoucherController::class, 'update']); 
     Route::delete('/vouchers/{id}', [VoucherController::class, 'destroy']); 
+
+    // REPORT
+    Route::get('/reports/summary', [ReportController::class, 'summary']);
 
 });
 

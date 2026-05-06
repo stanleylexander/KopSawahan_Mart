@@ -334,20 +334,45 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   }
 
   Future<void> handleAddToCart(Product product, BuildContext sourceContext) async {
-    await Future.wait([
-      CartService.addToCart(product),
-      animateProductToCart(sourceContext),
-    ]);
+    final currentQuantity = await CartService.getProductQuantity(product.id);
+
+    if (product.stock <= 0 || currentQuantity >= product.stock) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Jumlah produk di keranjang sudah mencapai stok"),
+        ),
+      );
+      return;
+    }
+
+    final added = await CartService.addToCart(product);
+
+    if (!added) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Produk tidak bisa ditambahkan lagi"),
+        ),
+      );
+      return;
+    }
+
+    if (!sourceContext.mounted) {
+      return;
+    }
+
+    await animateProductToCart(sourceContext);
 
     if (!mounted) {
       return;
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Produk ditambahkan ke keranjang"),
-      ),
-    );
   }
 
   Widget buildSearchBar() {
@@ -792,11 +817,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                       Builder(
                         builder: (buttonContext) {
                           return InkWell(
-                            onTap: () => handleAddToCart(product, buttonContext),
+                            onTap: product.stock > 0
+                                ? () => handleAddToCart(product, buttonContext)
+                                : null,
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
-                                color: primaryRed,
+                                color: product.stock > 0 ? primaryRed : Colors.grey.shade400,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(

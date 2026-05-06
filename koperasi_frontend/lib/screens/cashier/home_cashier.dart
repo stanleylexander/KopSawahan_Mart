@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/push_notification_service.dart';
 import '../../services/order_service.dart';
 import '../../utils/receipt_helper.dart';
 import '../drawer/drawer_cashier.dart';
@@ -21,6 +22,7 @@ class _HomeCashierState extends State<HomeCashier> {
   @override
   void initState() {
     super.initState();
+    PushNotificationService.syncDeviceTokenWithServer();
     loadOrders();
   }
 

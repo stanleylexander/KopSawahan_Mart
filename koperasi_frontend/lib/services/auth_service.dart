@@ -5,9 +5,35 @@ import '../config/api.dart';
 import 'push_notification_service.dart';
 
 class AuthService {
+  static Map<String, dynamic> _decodeResponse(http.Response response) {
+    try {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
 
-  // REGISTER
-  static Future<bool> register(
+  static String _errorMessage(Map<String, dynamic> data, String fallback) {
+    final message = data["message"];
+
+    if (message is String && message.isNotEmpty) {
+      return message;
+    }
+
+    final errors = data["errors"];
+
+    if (errors is Map && errors.isNotEmpty) {
+      final firstError = errors.values.first;
+
+      if (firstError is List && firstError.isNotEmpty) {
+        return firstError.first.toString();
+      }
+    }
+
+    return fallback;
+  }
+
+  static Future<Map<String, dynamic>> requestRegisterOtp(
     String name,
     String email,
     String password,
@@ -15,39 +41,93 @@ class AuthService {
     String birthDate,
     String gender,
   ) async {
-
-    try{
-
+    try {
       final response = await http.post(
-        Uri.parse("${Api.baseUrl}/register"),
+        Uri.parse("${Api.baseUrl}/register/request-otp"),
         headers: {
-          "Accept": "application/json"
+          "Accept": "application/json",
+          "Content-Type": "application/json",
         },
-        body: {
+        body: jsonEncode({
           "name": name,
           "email": email,
           "password": password,
           "phone_number": phone,
           "date_of_birth": birthDate,
-          "gender": gender
-        },
+          "gender": gender,
+        }),
       );
 
+      final data = _decodeResponse(response);
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return true;
+        return {
+          "success": true,
+          "message": _errorMessage(data, "Kode OTP berhasil dikirim"),
+        };
       } else {
-        print("Register gagal: ${response.body}");
-        return false;
+        return {
+          "success": false,
+          "message": _errorMessage(data, "Gagal mengirim OTP"),
+        };
+      }
+    } catch (e) {
+      return {
+        "success": false,
+        "message": "Terjadi error saat mengirim OTP",
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> verifyRegisterOtp(
+    String email,
+    String otpCode,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/register/verify-otp"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "email": email,
+          "otp_code": otpCode,
+        }),
+      );
+
+      final data = _decodeResponse(response);
+
+      if (response.statusCode == 200) {
+        final token = data['token'];
+        final role = data['user']['role'];
+        final userId = data['user']['id'];
+
+        SharedPreferences prefs =
+            await SharedPreferences.getInstance();
+
+        await prefs.setString("token", token);
+        await prefs.setString("role", role);
+        await prefs.setInt("userId", userId);
+        await PushNotificationService.syncDeviceTokenWithServer(apiToken: token);
+
+        return {
+          "success": true,
+          "message": _errorMessage(data, "Register berhasil"),
+        };
       }
 
+      return {
+        "success": false,
+        "message": _errorMessage(data, "Verifikasi OTP gagal"),
+      };
     } catch (e) {
-      print("Error register: $e");
-      return false;
+      return {
+        "success": false,
+        "message": "Terjadi error saat verifikasi OTP",
+      };
     }
-  } 
-
-    
-
+  }
 
   // LOGIN
   static Future<bool> login(String email, String password) async {

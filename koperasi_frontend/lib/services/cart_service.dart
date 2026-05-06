@@ -27,22 +27,44 @@ class CartService {
     await prefs.setString(cartKey, encoded);
   }
 
+  static Future<int> getProductQuantity(int productId) async {
+    final cart = await getCart();
+    final index = cart.indexWhere((item) => item.id == productId);
+
+    if (index == -1) {
+      return 0;
+    }
+
+    return cart[index].quantity;
+  }
+
   // ADD TO CART
-  static Future<void> addToCart(Product product) async {
+  static Future<bool> addToCart(Product product) async {
 
     final prefs = await SharedPreferences.getInstance();
     List<Cart> cart = await getCart();
     int index = cart.indexWhere((item) => item.id == product.id);
 
     if(index != -1){
+      cart[index].stock = product.stock;
+
+      if (cart[index].quantity >= product.stock) {
+        return false;
+      }
+
       cart[index].quantity += 1;
     }else{
+      if (product.stock <= 0) {
+        return false;
+      }
+
       cart.add(
         Cart(
           id: product.id,
           name: product.name,
           price: product.price,
           image: product.image,
+          stock: product.stock,
           quantity: 1,
         )
       );
@@ -52,19 +74,31 @@ class CartService {
         jsonEncode(cart.map((e) => e.toJson()).toList());
 
     await prefs.setString(cartKey, encoded);
+    return true;
   }
 
   // INCREASE QTY
-  static Future<void> increaseQuantity(int productId) async {
+  static Future<bool> increaseQuantity(int productId, {int? maxStock}) async {
 
     List<Cart> cart = await getCart();
     int index = cart.indexWhere((item) => item.id == productId);
 
     if(index != -1){
+      final stockLimit = maxStock ?? cart[index].stock;
+
+      if (stockLimit > 0) {
+        cart[index].stock = stockLimit;
+      }
+
+      if (stockLimit > 0 && cart[index].quantity >= stockLimit) {
+        return false;
+      }
+
       cart[index].quantity += 1;
     }
 
     await saveCart(cart);
+    return true;
   }
 
   // DECREASE QTY
