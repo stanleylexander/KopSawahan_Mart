@@ -83,7 +83,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
       return;
     }
 
-    showMessage("Checkout berhasil dibuat");
     Navigator.pop(context, true);
   }
 

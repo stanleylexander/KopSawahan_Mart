@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/push_notification_service.dart';
 import '../../services/order_service.dart';
 import '../../utils/receipt_helper.dart';
@@ -18,6 +20,8 @@ class _HomeCashierState extends State<HomeCashier> {
   bool isLoading = true;
   final TextEditingController searchController = TextEditingController();
   final Set<int> expandedOrderIds = {};
+  final Map<int, DateTime> notificationCooldowns = {};
+  final Map<int, Timer> notificationCooldownTimers = {};
 
   @override
   void initState() {
@@ -28,6 +32,9 @@ class _HomeCashierState extends State<HomeCashier> {
 
   @override
   void dispose() {
+    for (final timer in notificationCooldownTimers.values) {
+      timer.cancel();
+    }
     searchController.dispose();
     super.dispose();
   }
@@ -48,6 +55,8 @@ class _HomeCashierState extends State<HomeCashier> {
         return;
       }
 
+      await loadNotificationCooldowns(data);
+
       setState(() {
         orders = data;
         isLoading = false;
@@ -62,11 +71,92 @@ class _HomeCashierState extends State<HomeCashier> {
     }
   }
 
+  String getNotificationCooldownKey(int orderId) {
+    return "order_notification_cooldown_$orderId";
+  }
+
+  Future<void> loadNotificationCooldowns(List data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+
+    for (final order in data) {
+      final orderId = order['id'];
+      if (orderId is! int) {
+        continue;
+      }
+
+      final raw = prefs.getString(getNotificationCooldownKey(orderId));
+      final cooldownUntil = DateTime.tryParse(raw ?? '');
+
+      if (cooldownUntil == null || cooldownUntil.isBefore(now)) {
+        notificationCooldowns.remove(orderId);
+        notificationCooldownTimers[orderId]?.cancel();
+        notificationCooldownTimers.remove(orderId);
+        await prefs.remove(getNotificationCooldownKey(orderId));
+      } else {
+        notificationCooldowns[orderId] = cooldownUntil;
+        scheduleNotificationCooldownTimer(orderId, cooldownUntil);
+      }
+    }
+  }
+
+  void scheduleNotificationCooldownTimer(int orderId, DateTime cooldownUntil) {
+    notificationCooldownTimers[orderId]?.cancel();
+
+    final remaining = cooldownUntil.difference(DateTime.now());
+
+    if (remaining.isNegative) {
+      notificationCooldowns.remove(orderId);
+      return;
+    }
+
+    notificationCooldownTimers[orderId] = Timer(remaining, () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(getNotificationCooldownKey(orderId));
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        notificationCooldowns.remove(orderId);
+        notificationCooldownTimers.remove(orderId);
+      });
+    });
+  }
+
+  bool isNotificationDisabled(int orderId) {
+    final cooldownUntil = notificationCooldowns[orderId];
+    return cooldownUntil != null && cooldownUntil.isAfter(DateTime.now());
+  }
+
+  String getNotificationCooldownLabel(int orderId) {
+    final cooldownUntil = notificationCooldowns[orderId];
+
+    if (cooldownUntil == null) {
+      return "Notifikasi";
+    }
+
+    final remaining = cooldownUntil.difference(DateTime.now());
+
+    if (remaining.isNegative) {
+      return "Notifikasi";
+    }
+
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+
+    if (hours > 0) {
+      return "${hours}j ${minutes}m";
+    }
+
+    return "${minutes}m";
+  }
+
   Future<void> handleCompleteOrder(int orderId, {int? amountPaid}) async {
     final response = await OrderService.completeOrder(orderId, amountPaid: amountPaid);
 
     if (response != null) {
-      showMessage("Pesanan selesai");
 
       final receipt = response["receipt"];
 
@@ -92,7 +182,28 @@ class _HomeCashierState extends State<HomeCashier> {
   }
 
   Future<void> sendOrderNotification(int orderId) async {
+    if (isNotificationDisabled(orderId)) {
+      showMessage("Notifikasi sudah dikirim. Tunggu 3 jam untuk mengirim lagi.");
+      return;
+    }
+
     final success = await OrderService.notifyOrder(orderId);
+
+    if (success) {
+      final cooldownUntil = DateTime.now().add(const Duration(hours: 3));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        getNotificationCooldownKey(orderId),
+        cooldownUntil.toIso8601String(),
+      );
+
+      if (mounted) {
+        setState(() {
+          notificationCooldowns[orderId] = cooldownUntil;
+        });
+        scheduleNotificationCooldownTimer(orderId, cooldownUntil);
+      }
+    }
 
     showMessage(
       success ? "Notifikasi berhasil dikirim" : "Gagal mengirim notifikasi",
@@ -351,6 +462,8 @@ class _HomeCashierState extends State<HomeCashier> {
 
     final isCashPayment = order['payment_method'] == 'cash';
     final hasUser = order['user_id'] != null;
+    final orderId = order['id'] as int;
+    final notificationDisabled = isNotificationDisabled(orderId);
 
     return Wrap(
       spacing: 8,
@@ -359,7 +472,9 @@ class _HomeCashierState extends State<HomeCashier> {
       children: [
         if (hasUser)
           OutlinedButton.icon(
-            onPressed: () => sendOrderNotification(order['id']),
+            onPressed: notificationDisabled
+                ? null
+                : () => sendOrderNotification(orderId),
             style: OutlinedButton.styleFrom(
               foregroundColor: primaryRed,
               side: BorderSide(color: Colors.red.shade200),
@@ -368,8 +483,8 @@ class _HomeCashierState extends State<HomeCashier> {
               ),
             ),
             icon: const Icon(Icons.notifications_active_outlined, size: 18),
-            label: const Text(
-              "Notifikasi",
+            label: Text(
+              getNotificationCooldownLabel(orderId),
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),

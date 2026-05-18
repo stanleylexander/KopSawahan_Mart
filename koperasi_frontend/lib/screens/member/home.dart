@@ -40,6 +40,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   bool isLoading = true;
   bool isWorker = false;
   TextEditingController searchController = TextEditingController();
+  static const int productsPerPage = 10;
+  int currentProductPage = 0;
 
   int get userPointsValue => _userPoints ?? 0;
   int get availableVoucherCountValue => _availableVoucherCount ?? 0;
@@ -50,6 +52,28 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       return "Bronze";
     }
     return value;
+  }
+
+  int get totalProductPages {
+    if (filteredProducts.isEmpty) {
+      return 1;
+    }
+
+    return (filteredProducts.length / productsPerPage).ceil();
+  }
+
+  List<Product> get pagedProducts {
+    final startIndex = currentProductPage * productsPerPage;
+
+    if (startIndex >= filteredProducts.length) {
+      return [];
+    }
+
+    final endIndex = (startIndex + productsPerPage) > filteredProducts.length
+        ? filteredProducts.length
+        : startIndex + productsPerPage;
+
+    return filteredProducts.sublist(startIndex, endIndex);
   }
 
   @override
@@ -145,12 +169,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   void applySearch(String keyword) {
     if (keyword.isEmpty) {
       filteredProducts = List<Product>.from(products);
+      currentProductPage = 0;
       return;
     }
 
     filteredProducts = products.where((product) {
       return product.name.toLowerCase().contains(keyword.toLowerCase());
     }).toList();
+    currentProductPage = 0;
   }
 
   Future<void> loadHomeData() async {
@@ -689,7 +715,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: filteredProducts.length,
+      itemCount: pagedProducts.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
@@ -697,8 +723,74 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         childAspectRatio: 0.73,
       ),
       itemBuilder: (context, index) {
-        return productCard(filteredProducts[index]);
+        return productCard(pagedProducts[index]);
       },
+    );
+  }
+
+  Widget buildProductPagination() {
+    if (filteredProducts.length <= productsPerPage) {
+      return const SizedBox.shrink();
+    }
+
+    final pageNumber = currentProductPage + 1;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: currentProductPage == 0
+                  ? null
+                  : () {
+                      setState(() {
+                        currentProductPage--;
+                      });
+                    },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: primaryRed,
+                side: BorderSide(color: Colors.red.shade200),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.chevron_left),
+              label: const Text("Sebelumnya"),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            "$pageNumber / $totalProductPages",
+            style: TextStyle(
+              color: primaryRed,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: currentProductPage >= totalProductPages - 1
+                  ? null
+                  : () {
+                      setState(() {
+                        currentProductPage++;
+                      });
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryRed,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.chevron_right),
+              label: const Text("Berikutnya"),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -856,6 +948,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           buildWelcomeCard(),
           buildSectionHeader(),
           buildProductGrid(),
+          buildProductPagination(),
           const SizedBox(height: 24),
         ],
       ),

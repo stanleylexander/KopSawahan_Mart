@@ -138,7 +138,6 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
   }
 
   Future<void> animateProductToCart(BuildContext sourceContext) async {
-    final overlay = Overlay.of(context);
     final sourceRenderBox = sourceContext.findRenderObject() as RenderBox?;
     final targetRenderBox = _cartButtonKey.currentContext?.findRenderObject() as RenderBox?;
 
@@ -679,12 +678,19 @@ class _ShopCashierState extends State<ShopCashier> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("POS Kasir"),
+        title: const Text(
+          "Belanja di Tempat",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.red.shade700,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             onPressed: openBarcodeScanner,
-            icon: const Icon(Icons.qr_code_scanner),
+            icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
             tooltip: "Scan Barcode",
           ),
         ],

@@ -57,7 +57,6 @@ class _QrisCashierState extends State<QrisCashier> {
       return;
     }
 
-    showMessage("Pembayaran berhasil");
     final receipt = response["receipt"];
 
     if (receipt is Map<String, dynamic>) {

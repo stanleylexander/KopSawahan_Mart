@@ -78,7 +78,6 @@ class _QrisMemberState extends State<QrisMember> {
       return;
     }
 
-    showMessage("Pembayaran berhasil");
     final receipt = response?["receipt"];
 
     if (receipt is Map<String, dynamic>) {

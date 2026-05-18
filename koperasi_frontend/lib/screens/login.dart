@@ -25,11 +25,19 @@ class _LoginState extends State<Login> {
       passwordController.text.trim(),
     );
 
+    if (!mounted) {
+      return;
+    }
+
     setState(() => isLoading = false);
 
     if (success) {
 
       String? role = await AuthService.getRole();
+
+      if (!mounted) {
+        return;
+      }
 
       if (role == 'member') {
         Navigator.pushReplacement(
@@ -85,13 +93,17 @@ class _LoginState extends State<Login> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.red.shade700,
-                    child: Icon(
-                      Icons.account_circle,
-                      size: 52,
+                  Container(
+                    width: 138,
+                    height: 138,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Image.asset(
+                      "assets/images/logo_kopkelsawahan.png",
+                      fit: BoxFit.contain,
                     ),
                   ),
                   const SizedBox(height: 16),
