@@ -5,6 +5,12 @@ import '../config/api.dart';
 import 'push_notification_service.dart';
 
 class AuthService {
+  static const Duration sessionTimeout = Duration(days: 7);
+  static const String _tokenKey = "token";
+  static const String _roleKey = "role";
+  static const String _userIdKey = "userId";
+  static const String _sessionExpiresAtKey = "session_expires_at";
+
   static Map<String, dynamic> _decodeResponse(http.Response response) {
     try {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -31,6 +37,75 @@ class AuthService {
     }
 
     return fallback;
+  }
+
+  static Future<void> _saveSession({
+    required String token,
+    required String role,
+    required int userId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final expiresAt = DateTime.now().add(sessionTimeout);
+
+    await prefs.setString(_tokenKey, token);
+    await prefs.setString(_roleKey, role);
+    await prefs.setInt(_userIdKey, userId);
+    await prefs.setString(_sessionExpiresAtKey, expiresAt.toIso8601String());
+  }
+
+  static Future<void> clearLocalSession() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_roleKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove(_sessionExpiresAtKey);
+  }
+
+  static Future<bool> isSessionValid() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    final role = prefs.getString(_roleKey);
+    final expiresAtText = prefs.getString(_sessionExpiresAtKey);
+
+    if (token == null || token.isEmpty || role == null || role.isEmpty) {
+      return false;
+    }
+
+    if (expiresAtText == null || expiresAtText.isEmpty) {
+      await clearLocalSession();
+      return false;
+    }
+
+    final expiresAt = DateTime.tryParse(expiresAtText);
+
+    if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
+      await clearLocalSession();
+      return false;
+    }
+
+    return true;
+  }
+
+  static Future<String?> getValidRole() async {
+    final valid = await isSessionValid();
+
+    if (!valid) {
+      return null;
+    }
+
+    return getRole();
+  }
+
+  static Future<DateTime?> getSessionExpiresAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final expiresAtText = prefs.getString(_sessionExpiresAtKey);
+
+    if (expiresAtText == null || expiresAtText.isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(expiresAtText);
   }
 
   static Future<Map<String, dynamic>> requestRegisterOtp(
@@ -103,12 +178,7 @@ class AuthService {
         final role = data['user']['role'];
         final userId = data['user']['id'];
 
-        SharedPreferences prefs =
-            await SharedPreferences.getInstance();
-
-        await prefs.setString("token", token);
-        await prefs.setString("role", role);
-        await prefs.setInt("userId", userId);
+        await _saveSession(token: token, role: role, userId: userId);
         await PushNotificationService.syncDeviceTokenWithServer(apiToken: token);
 
         return {
@@ -131,70 +201,52 @@ class AuthService {
 
   // LOGIN
   static Future<bool> login(String email, String password) async {
-
     try {
-
       final response = await http.post(
         Uri.parse("${Api.baseUrl}/login"),
-        headers: {
-          "Accept": "application/json"
-        },
-        body: {
-          "email": email,
-          "password": password
-        },
+        headers: {"Accept": "application/json"},
+        body: {"email": email, "password": password},
       );
 
       print("Response API:");
       print(response.body);
 
       if (response.statusCode == 200) {
-
         final data = jsonDecode(response.body);
 
         String token = data['token'];
         String role = data['user']['role'];
         int userId = data['user']['id'];
 
-        SharedPreferences prefs =
-            await SharedPreferences.getInstance();
-
-        await prefs.setString("token", token);
-        await prefs.setString("role", role);
-        await prefs.setInt("userId", userId);
+        await _saveSession(token: token, role: role, userId: userId);
         await PushNotificationService.syncDeviceTokenWithServer(apiToken: token);
 
         return true;
-
       } else {
         return false;
       }
-
     } catch (e) {
       print("Login error: $e");
       return false;
     }
   }
 
-
   // GET TOKEN
   static Future<String?> getToken() async {
-    SharedPreferences prefs =
-        await SharedPreferences.getInstance();
-    return prefs.getString("token");
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokenKey);
   }
 
   // GET ROLE
   static Future<String?> getRole() async {
-    SharedPreferences prefs =
-        await SharedPreferences.getInstance();
-    return prefs.getString("role");
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_roleKey);
   }
 
   // LOGOUT
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    String token = prefs.getString('token') ?? '';
+    String token = prefs.getString(_tokenKey) ?? '';
 
     try {
       await PushNotificationService.clearDeviceTokenFromServer(apiToken: token);
@@ -209,7 +261,6 @@ class AuthService {
       print("Logout error: $e");
     }
 
-    await prefs.clear(); 
+    await clearLocalSession();
   }
-  
 }

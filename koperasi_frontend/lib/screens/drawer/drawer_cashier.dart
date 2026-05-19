@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/auth_service.dart';
 import '../login.dart';
 import '../cashier/home_cashier.dart';
 import '../cashier/shop_cashier.dart';
@@ -8,12 +8,11 @@ class CashierDrawer extends StatelessWidget {
   const CashierDrawer({super.key});
 
   Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await AuthService.logout();
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => Login()),
+      MaterialPageRoute(builder: (_) => const Login()),
       (route) => false,
     );
   }
