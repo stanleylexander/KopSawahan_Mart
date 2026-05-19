@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -125,6 +126,96 @@ class AuthController extends Controller
             'message' => 'Register berhasil',
             'token' => $token,
             'user' => $user
+        ]);
+    }
+
+    public function requestForgotPasswordOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $email = strtolower($request->email);
+        $otpCode = (string) random_int(100000, 999999);
+
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $email],
+            [
+                'token' => Hash::make($otpCode),
+                'created_at' => now(),
+            ]
+        );
+
+        Mail::raw(
+            "Kode OTP reset password KopSawahan Mart kamu adalah: {$otpCode}. Kode ini berlaku selama 10 menit.",
+            function ($message) use ($email) {
+                $message->to($email)
+                    ->subject('Kode OTP Reset Password KopSawahan Mart');
+            }
+        );
+
+        return response()->json([
+            'message' => 'Kode OTP reset password berhasil dikirim ke email',
+        ]);
+    }
+
+    public function resetPasswordWithOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'otp_code' => 'required|string|size:6',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $email = strtolower($request->email);
+        $resetToken = DB::table('password_reset_tokens')
+            ->where('email', $email)
+            ->first();
+
+        if (!$resetToken) {
+            return response()->json([
+                'message' => 'Kode OTP tidak ditemukan. Silakan minta kode baru.',
+            ], 404);
+        }
+
+        if (now()->subMinutes(10)->greaterThan($resetToken->created_at)) {
+            DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+            return response()->json([
+                'message' => 'Kode OTP sudah kadaluarsa. Silakan minta kode baru.',
+            ], 422);
+        }
+
+        if (!Hash::check($request->otp_code, $resetToken->token)) {
+            return response()->json([
+                'message' => 'Kode OTP salah',
+            ], 422);
+        }
+
+        $status = Password::broker()->reset(
+            [
+                'email' => $email,
+                'password' => $request->password,
+                'password_confirmation' => $request->password_confirmation,
+                'token' => $request->otp_code,
+            ],
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->save();
+
+                $user->tokens()->delete();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'Gagal mengubah password. Silakan minta kode baru.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Password berhasil diubah. Silakan login kembali.',
         ]);
     }
 

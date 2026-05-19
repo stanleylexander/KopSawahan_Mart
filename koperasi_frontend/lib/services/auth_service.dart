@@ -199,6 +199,84 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> requestForgotPasswordOtp(
+    String email,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/forgot-password/request-otp"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "email": email,
+        }),
+      );
+
+      final data = _decodeResponse(response);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          "success": true,
+          "message": _errorMessage(data, "Kode OTP berhasil dikirim"),
+        };
+      }
+
+      return {
+        "success": false,
+        "message": _errorMessage(data, "Gagal mengirim OTP"),
+      };
+    } catch (e) {
+      return {
+        "success": false,
+        "message": "Terjadi error saat mengirim OTP",
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> resetPasswordWithOtp(
+    String email,
+    String otpCode,
+    String password,
+    String passwordConfirmation,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${Api.baseUrl}/forgot-password/reset"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "email": email,
+          "otp_code": otpCode,
+          "password": password,
+          "password_confirmation": passwordConfirmation,
+        }),
+      );
+
+      final data = _decodeResponse(response);
+
+      if (response.statusCode == 200) {
+        return {
+          "success": true,
+          "message": _errorMessage(data, "Password berhasil diubah"),
+        };
+      }
+
+      return {
+        "success": false,
+        "message": _errorMessage(data, "Gagal mengubah password"),
+      };
+    } catch (e) {
+      return {
+        "success": false,
+        "message": "Terjadi error saat mengubah password",
+      };
+    }
+  }
+
   // LOGIN
   static Future<bool> login(String email, String password) async {
     try {

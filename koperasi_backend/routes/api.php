@@ -16,6 +16,8 @@ use Illuminate\Http\Request;
 // AUTH CONTROLLER
 Route::post('/register/request-otp', [AuthController::class, 'requestRegisterOtp']);
 Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']);
+Route::post('/forgot-password/request-otp', [AuthController::class, 'requestForgotPasswordOtp']);
+Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordWithOtp']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
